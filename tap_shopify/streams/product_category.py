@@ -21,8 +21,8 @@ class HiddenPrints:
         sys.stdout = self._original_stdout
 
 
-class ProductType(Stream):
-    name = 'product_type'
+class ProductCategory(Stream):
+    name = 'product_category'
     replication_key = 'createdAt'
     gql_query = """
     query product($id: ID!){
@@ -44,7 +44,7 @@ class ProductType(Stream):
     """
 
     @shopify_error_handling
-    def call_api_for_product_types(self, parent_object):
+    def call_api_for_product_categories(self, parent_object):
         gql_client = shopify.GraphQL()
         with HiddenPrints():
             response = gql_client.execute(self.gql_query, dict(id=parent_object.admin_graphql_api_id))
@@ -52,10 +52,10 @@ class ProductType(Stream):
 
     def get_objects(self):
         selected_parent = Context.stream_objects['products']()
-        selected_parent.name = "products_types"
+        selected_parent.name = "products_categories"
         for parent_object in selected_parent.get_objects():
-            product_type = self.call_api_for_product_types(parent_object)
-            item = product_type["data"].get("product")
+            product_category = self.call_api_for_product_categories(parent_object)
+            item = product_category["data"].get("product")
             if item.get('productCategory'):
                 item['category_id'] = item['productCategory']['productTaxonomyNode']['id']
                 item['full_name'] = item['productCategory']['productTaxonomyNode']['fullName']
@@ -77,4 +77,4 @@ class ProductType(Stream):
         self.update_bookmark(strftime(self.max_bookmark))
 
 
-Context.stream_objects['product_type'] = ProductType
+Context.stream_objects['product_category'] = ProductCategory
