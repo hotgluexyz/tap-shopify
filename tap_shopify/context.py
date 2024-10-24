@@ -3,6 +3,8 @@ from singer import metadata
 
 LOGGER = singer.get_logger()
 
+RESULTS_PER_PAGE = 250
+
 class Context():
     config = {}
     state = {}
@@ -27,7 +29,7 @@ class Context():
     def get_results_per_page(cls, default_results_per_page):
         results_per_page = default_results_per_page
         try:
-            results_per_page = int(cls.config.get("results_per_page"))
+            results_per_page = int(cls.config.get("results_per_page", RESULTS_PER_PAGE))
         except TypeError:
             # None value or no key
             pass
