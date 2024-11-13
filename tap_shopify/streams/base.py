@@ -9,17 +9,15 @@ import pyactiveresource.formats
 import simplejson
 import singer
 from singer import metrics, utils
-from tap_shopify.context import Context
+from tap_shopify.context import Context, RESULTS_PER_PAGE
 
 LOGGER = singer.get_logger()
-
-RESULTS_PER_PAGE = 175
 
 # We've observed 500 errors returned if this is too large (30 days was too
 # large for a customer)
 DATE_WINDOW_SIZE = 365
 
-# We will retry a 500 error a maximum of 5 times before giving up
+# We will retry a 500 error a maximum of 10 times before giving up
 MAX_RETRIES = 10
 
 def is_not_status_code_fn(status_code):

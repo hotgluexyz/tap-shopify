@@ -33,6 +33,7 @@ def initialize_shopify_client():
     version = Context.config.get('api_version', '2024-01')
     session = shopify.Session(shop, version, api_key)
     shopify.ShopifyResource.activate_session(session)
+    shopify.ShopifyResource._headers['Connection'] = 'keep-alive'
     # Shop.current() makes a call for shop details with provided shop and api_key
     return shopify.Shop.current().attributes
 
@@ -183,7 +184,7 @@ def sync():
 
         Context.state['bookmarks'].pop('currently_sync_stream')
         singer.write_state(Context.state)
-
+    
     LOGGER.info('----------------------')
     for stream_id, stream_count in Context.counts.items():
         LOGGER.info('%s: %d', stream_id, stream_count)
@@ -226,6 +227,9 @@ def main():
             raise ShopifyError(exc, msg) from exc
     except Exception as exc:
         raise ShopifyError(exc) from exc
+    finally:
+        shopify.ShopifyResource.clear_session()
+
 
 if __name__ == "__main__":
     main()
