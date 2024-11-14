@@ -10,6 +10,7 @@ import simplejson
 import singer
 from singer import metrics, utils
 from tap_shopify.context import Context, RESULTS_PER_PAGE
+from tap_shopify.exceptions import ShopifyError, get_message
 
 LOGGER = singer.get_logger()
 
@@ -17,8 +18,8 @@ LOGGER = singer.get_logger()
 # large for a customer)
 DATE_WINDOW_SIZE = 365
 
-# We will retry a 500 error a maximum of 10 times before giving up
-MAX_RETRIES = 10
+# We will retry a 500 error a maximum of 20 times before giving up
+MAX_RETRIES = 20
 
 def is_not_status_code_fn(status_code):
     def gen_fn(exc):
@@ -63,7 +64,12 @@ def shopify_error_handling(fnc):
                           on_backoff=leaky_bucket_handler)
     @functools.wraps(fnc)
     def wrapper(*args, **kwargs):
-        return fnc(*args, **kwargs)
+        try:
+            return fnc(*args, **kwargs)
+        except Exception as exc:
+            msg = get_message(exc)
+            LOGGER.error(msg)
+            raise ShopifyError(exc, msg) from exc
     return wrapper
 
 class Error(Exception):
