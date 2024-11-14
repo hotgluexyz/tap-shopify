@@ -14,7 +14,7 @@ from singer import utils
 from singer import metadata
 from singer import Transformer
 from tap_shopify.context import Context
-from tap_shopify.exceptions import ShopifyError
+from tap_shopify.exceptions import ShopifyError, get_message
 from tap_shopify.streams.base import shopify_error_handling
 import tap_shopify.streams # Load stream objects into Context
 
@@ -213,20 +213,21 @@ def main():
 
             sync()
     except pyactiveresource.connection.ResourceNotFound as exc:
-        raise ShopifyError(exc, 'Ensure shop is entered correctly') from exc
+        msg = get_message(exc, 'Ensure shop is entered correctly')
+        LOGGER.error(msg)
+        raise ShopifyError(exc, msg) from exc
     except pyactiveresource.connection.UnauthorizedAccess as exc:
-        raise ShopifyError(exc, 'Invalid access token - Re-authorize the connection') \
-            from exc
+        msg = get_message(exc, 'Invalid access token - Re-authorize the connection')
+        LOGGER.error(msg)
+        raise ShopifyError(exc, msg) from exc
     except pyactiveresource.connection.ConnectionError as exc:
-        msg = ''
-        try:
-            body_json = exc.response.body.decode()
-            body = json.loads(body_json)
-            msg = body.get('errors')
-        finally:
-            raise ShopifyError(exc, msg) from exc
+        msg = get_message(exc)
+        LOGGER.error(msg)
+        raise ShopifyError(exc, msg) from exc
     except Exception as exc:
-        raise ShopifyError(exc) from exc
+        msg = get_message(exc)
+        LOGGER.error(msg)
+        raise ShopifyError(exc, msg) from exc
     finally:
         shopify.ShopifyResource.clear_session()
 
