@@ -1,0 +1,142 @@
+{
+    "type": "object",
+    "properties": {
+        "currencySettings": {
+            "properties": {
+                "baseCurrency": {
+                    "properties": {
+                        "currencyCode": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        },
+                        "currencyName": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        },
+                        "enabled": {
+                            "type": [
+                                "boolean",
+                                "null"
+                            ]
+                        },
+                        "rateUpdatedAt": {
+                            "format": "date-time",
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        }
+                    },
+                    "type": [
+                        "object",
+                        "null"
+                    ]
+                },
+                "localCurrencies": {
+                    "type": [
+                        "boolean",
+                        "null"
+                    ]
+                }
+            },
+            "type": [
+                "object",
+                "null"
+            ]
+        },
+        "enabled": {
+            "type": [
+                "boolean",
+                "null"
+            ]
+        },
+        "handle": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "id": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "name": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "primary": {
+            "type": [
+                "boolean",
+                "null"
+            ]
+        },
+        "webPresence": {
+            "properties": {
+                "alternateLocales": {
+                    "items": {
+                        "type": [
+                            "string"
+                        ]
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "defaultLocale": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "id": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "rootUrls": {
+                    "items": {
+                        "properties": {
+                            "locale": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "url": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            }
+                        },
+                        "type": "object"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "subfolderSuffix": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                }
+            },
+            "type": [
+                "object",
+                "null"
+            ]
+        }
+    }
+}
