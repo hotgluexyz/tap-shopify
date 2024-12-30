@@ -37,9 +37,30 @@ class Markets(Stream):
         return json.loads(response)
 
     def get_objects(self):
-        incoming_item = self.call_api_for_incoming_items()
-        for edge in incoming_item["data"].get("markets", {}).get("edges", []):
-            yield edge.get("node")
+        try:
+            incoming_item = self.call_api_for_incoming_items()
+            data = incoming_item.get("data") if incoming_item else {}
+            markets = data.get("markets") if data else {}
+            edges = markets.get("edges") if markets else []
+            if not edges:
+                if incoming_item.get("errors"):
+                    message = ""
+                    for error in incoming_item.get("errors", []):
+                        message += f"{error.get('message')}\n"
+                    LOGGER.error(message)
+                    raise Exception(message)
+                LOGGER.warning("No data found in API response.")
+                return
+            for edge in edges:
+                node = edge.get("node")
+                if node is not None:
+                    yield node
+                else:
+                    LOGGER.warning("Edge without node found: %s... Ignoring it", edge)
+                    continue
+        except Exception as e:
+            LOGGER.error("Error fetching objects: %s", e)
+            return
 
     def sync(self):
         bookmark = self.get_bookmark()
