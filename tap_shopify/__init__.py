@@ -141,10 +141,16 @@ def sync():
     # Emit all schemas first so we have them for child streams
     for stream in Context.catalog["streams"]:
         if Context.is_selected(stream["tap_stream_id"]):
-            singer.write_schema(stream["tap_stream_id"],
-                                stream["schema"],
-                                stream["key_properties"],
-                                bookmark_properties=stream["replication_key"])
+            if stream.get("replication_key"):
+                singer.write_schema(stream["tap_stream_id"],
+                                    stream["schema"],
+                                    stream["key_properties"],
+                                    bookmark_properties=stream["replication_key"])
+            else:
+                singer.write_schema(stream["tap_stream_id"],
+                                    stream["schema"],
+                                    stream["key_properties"])
+
             Context.counts[stream["tap_stream_id"]] = 0
 
     # If there is a currently syncing stream bookmark, shuffle the
