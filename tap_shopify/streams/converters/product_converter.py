@@ -2,12 +2,15 @@ class ProductConverter():
     def __init__(self, graphql_product):
         """Initialize with a GraphQL product object."""
         self.graphql_product = graphql_product
-        self.product_id = int(graphql_product["id"].split("/")[-1])
+        self.product_id = self._extract_int_id(graphql_product["id"])
+    
+    def _extract_int_id(self, string_id):
+        return int(string_id.split("/")[-1])
 
     def _convert_options(self):
         return [
             {
-                "id": int(option["id"].split("/")[-1]),
+                "id": self._extract_int_id(option["id"]),
                 "product_id": self.product_id,
                 "name": option["name"],
                 "position": option["position"],
@@ -19,7 +22,7 @@ class ProductConverter():
     def _convert_images(self):
         return [
             {
-                "id": int(image["id"].split("/")[-1]),
+                "id": self._extract_int_id(image["id"]),
                 "position": idx + 1,
                 "created_at": None,  # No longer supported by GraphQL API
                 "updated_at": None,  # No longer supported by GraphQL API
@@ -39,8 +42,8 @@ class ProductConverter():
                 "created_at": variant["createdAt"],
                 "fulfillment_service": variant["fulfillmentService"]["handle"],
                 "grams": None,  # No longer supported by GraphQL API
-                "id": int(variant["id"].split("/")[-1]),
-                "inventory_item_id": int(variant["inventoryItem"]["id"].split("/")[-1]),
+                "id": self._extract_int_id(variant["id"]),
+                "inventory_item_id": self._extract_int_id(variant["inventoryItem"]["id"]),
                 "inventory_management": None,  # No longer supported by GraphQL API
                 "inventory_policy": variant["inventoryPolicy"],
                 "inventory_quantity": variant["inventoryQuantity"],
