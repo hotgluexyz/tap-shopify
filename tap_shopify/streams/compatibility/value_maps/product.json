@@ -1,4 +1,9 @@
 {
+    "status": {
+        "ACTIVE": "active",
+        "ARCHIVED": "archived",
+        "DRAFT": "draft"
+    },
     "variants": {
         "inventory_policy": {
             "DENY": "deny",

@@ -64,40 +64,56 @@ class ProductCompatibility():
 
     def _convert_variants(self):
         return [
-            self._cast_variant_values(
-                {
-                    "admin_graphql_api_id": variant["id"],
-                    "barcode": variant["barcode"],
-                    "compare_at_price": variant["compareAtPrice"],
-                    "created_at": variant["createdAt"],
-                    "fulfillment_service": variant["fulfillmentService"]["handle"],
-                    "grams": None,  # No longer supported by GraphQL API
-                    "id": self._extract_int_id(variant["id"]),
-                    "inventory_item_id": self._extract_int_id(variant["inventoryItem"]["id"]),
-                    "inventory_management": None,  # No longer supported by GraphQL API
-                    "inventory_policy": variant["inventoryPolicy"],
-                    "inventory_quantity": variant["inventoryQuantity"],
-                    "old_inventory_quantity": None,  # No longer supported by GraphQL API
-                    "position": variant["position"],
-                    "price": variant["price"],
-                    "requires_shipping": variant["inventoryItem"]["requiresShipping"],
-                    "sku": variant["sku"],
-                    "tax_code": variant["taxCode"],
-                    "taxable": variant["taxable"],
-                    "title": variant["title"],
-                    "updated_at": variant["updatedAt"],
-                    "weight": variant["weight"],
-                    "weight_unit": variant["weightUnit"],
-                } | self._extract_variant_options(variant)
-            )
+            {
+                "admin_graphql_api_id": variant["id"],
+                "barcode": variant["barcode"],
+                "compare_at_price": variant["compareAtPrice"],
+                "created_at": variant["createdAt"],
+                "fulfillment_service": variant["fulfillmentService"]["handle"],
+                "grams": None,  # No longer supported by GraphQL API
+                "id": self._extract_int_id(variant["id"]),
+                "inventory_item_id": self._extract_int_id(variant["inventoryItem"]["id"]),
+                "inventory_management": None,  # No longer supported by GraphQL API
+                "inventory_policy": variant["inventoryPolicy"],
+                "inventory_quantity": variant["inventoryQuantity"],
+                "old_inventory_quantity": None,  # No longer supported by GraphQL API
+                "position": variant["position"],
+                "price": variant["price"],
+                "requires_shipping": variant["inventoryItem"]["requiresShipping"],
+                "sku": variant["sku"],
+                "tax_code": variant["taxCode"],
+                "taxable": variant["taxable"],
+                "title": variant["title"],
+                "updated_at": variant["updatedAt"],
+                "weight": variant["weight"],
+                "weight_unit": variant["weightUnit"],
+            } | self._extract_variant_options(variant)
             for variant in self.graphql_product.get("variants", {}).get("nodes", [])
         ]
 
+    def _cast_values(self, data, mappings):
+        """
+        Recursively traverse and cast values in a dictionary or list based on mappings.
+        :param data: The data to process (dictionary, list, or scalar).
+        :param mappings: The mapping dictionary to use for casting.
+        :return: The processed data with values cast according to the mappings.
+        """
+        if isinstance(data, dict):
+            return {
+                key: self._cast_values(value, mappings.get(key, {}))
+                for key, value in data.items()
+            }
+        elif isinstance(data, list):
+            return [self._cast_values(item, mappings) for item in data]
+        elif data in mappings:
+            return mappings[data]
+        return data
+
     def to_dict(self):
         """Return the REST API-compatible product as a dictionary."""
-        return {
+        product_dict = {
             "admin_graphql_api_id": self.graphql_product["id"],
-            "body_html": self.graphql_product["descriptionHtml"],
+            "body_html": self.graphql_product["descriptionHtml"] or "",
             "created_at": self.graphql_product["createdAt"],
             "handle": self.graphql_product["handle"],
             "id": self.product_id,
@@ -115,3 +131,5 @@ class ProductCompatibility():
             "images": self._convert_images(),
             "variants": self._convert_variants()
         }
+
+        return self._cast_values(product_dict, self.value_map)
