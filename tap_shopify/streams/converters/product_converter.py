@@ -3,7 +3,7 @@ class ProductConverter():
         """Initialize with a GraphQL product object."""
         self.graphql_product = graphql_product
         self.product_id = self._extract_int_id(graphql_product["id"])
-    
+
     def _extract_int_id(self, string_id):
         return int(string_id.split("/")[-1])
 
@@ -23,6 +23,7 @@ class ProductConverter():
         return [
             {
                 "id": self._extract_int_id(image["id"]),
+                "admin_graphql_api_id": image["id"],
                 "position": idx + 1,
                 "created_at": None,  # No longer supported by GraphQL API
                 "updated_at": None,  # No longer supported by GraphQL API
@@ -34,9 +35,21 @@ class ProductConverter():
             for idx, image in enumerate(self.graphql_product.get("images", {}).get("nodes", []))
         ]
 
+    def _extract_variant_options(self, variant):
+        option_dict = {
+            "option1": None,
+            "option2": None,
+            "option3": None
+        } # The maximum number of selectedOptions returned from a ProductVariant is 3
+        selected_options = variant["selectedOptions"]
+        for idx, option in enumerate(selected_options):
+            option_dict[f"option{idx + 1}"] = option["value"]
+        return option_dict
+
     def _convert_variants(self):
         return [
             {
+                "admin_graphql_api_id": variant["id"],
                 "barcode": variant["barcode"],
                 "compare_at_price": variant["compareAtPrice"],
                 "created_at": variant["createdAt"],
@@ -48,9 +61,6 @@ class ProductConverter():
                 "inventory_policy": variant["inventoryPolicy"],
                 "inventory_quantity": variant["inventoryQuantity"],
                 "old_inventory_quantity": None,  # No longer supported by GraphQL API
-                "option1": None,  # FIXME, needs to be constructed from selectedOptions
-                "option2": None,  # FIXME, needs to be constructed from selectedOptions
-                "option3": None,  # FIXME, needs to be constructed from selectedOptions
                 "position": variant["position"],
                 "price": variant["price"],
                 "requires_shipping": variant["inventoryItem"]["requiresShipping"],
@@ -61,13 +71,14 @@ class ProductConverter():
                 "updated_at": variant["updatedAt"],
                 "weight": variant["weight"],
                 "weight_unit": variant["weightUnit"],
-            }
+            } | self._extract_variant_options(variant)
             for variant in self.graphql_product.get("variants", {}).get("nodes", [])
         ]
 
     def to_dict(self):
         """Return the REST API-compatible product as a dictionary."""
         return {
+            "admin_graphql_api_id": self.graphql_product["id"],
             "body_html": self.graphql_product["descriptionHtml"],
             "created_at": self.graphql_product["createdAt"],
             "handle": self.graphql_product["handle"],

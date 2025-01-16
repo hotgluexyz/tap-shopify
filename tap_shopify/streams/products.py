@@ -134,5 +134,5 @@ class Products(Stream):
             # Update the bookmark for the next batch
             updated_at_min = updated_at_max
             self.update_bookmark(strftime(updated_at_min))
-    
+
 Context.stream_objects['products'] = Products
