@@ -5,7 +5,7 @@ import json
 from datetime import timedelta
 import singer
 from singer.utils import strftime
-from streams.converters.product_converter import ProductConverter
+from streams.compatibility.product_compatibility import ProductCompatibility
 
 LOGGER = singer.get_logger()
 
@@ -123,7 +123,7 @@ class Products(Stream):
                 page_info = page['data']['products']['pageInfo']
 
                 for product in products:
-                    yield ProductConverter(product)
+                    yield ProductCompatibility(product)
 
                 # Update the cursor and check if there's another page
                 if page_info['hasNextPage']:

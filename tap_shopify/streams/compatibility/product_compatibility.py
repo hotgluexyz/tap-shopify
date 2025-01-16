@@ -1,8 +1,15 @@
-class ProductConverter():
+import json
+import os
+
+class ProductCompatibility():
     def __init__(self, graphql_product):
         """Initialize with a GraphQL product object."""
         self.graphql_product = graphql_product
         self.product_id = self._extract_int_id(graphql_product["id"])
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        value_map_path = os.path.join(current_dir, "value_maps", "product.json")
+        with open(value_map_path, 'r') as file:
+            self.value_map = json.load(file)
 
     def _extract_int_id(self, string_id):
         return int(string_id.split("/")[-1])
@@ -46,32 +53,43 @@ class ProductConverter():
             option_dict[f"option{idx + 1}"] = option["value"]
         return option_dict
 
+    def _cast_variant_values(self, variant):
+        """Cast variant values based on the value_map."""
+        for key, value in variant.items():
+            if key in self.value_map["variants"]:
+                key_map = self.value_map["variants"][key]
+                if value in key_map:
+                    variant[key] = key_map[value]
+        return variant
+
     def _convert_variants(self):
         return [
-            {
-                "admin_graphql_api_id": variant["id"],
-                "barcode": variant["barcode"],
-                "compare_at_price": variant["compareAtPrice"],
-                "created_at": variant["createdAt"],
-                "fulfillment_service": variant["fulfillmentService"]["handle"],
-                "grams": None,  # No longer supported by GraphQL API
-                "id": self._extract_int_id(variant["id"]),
-                "inventory_item_id": self._extract_int_id(variant["inventoryItem"]["id"]),
-                "inventory_management": None,  # No longer supported by GraphQL API
-                "inventory_policy": variant["inventoryPolicy"],
-                "inventory_quantity": variant["inventoryQuantity"],
-                "old_inventory_quantity": None,  # No longer supported by GraphQL API
-                "position": variant["position"],
-                "price": variant["price"],
-                "requires_shipping": variant["inventoryItem"]["requiresShipping"],
-                "sku": variant["sku"],
-                "tax_code": variant["taxCode"],
-                "taxable": variant["taxable"],
-                "title": variant["title"],
-                "updated_at": variant["updatedAt"],
-                "weight": variant["weight"],
-                "weight_unit": variant["weightUnit"],
-            } | self._extract_variant_options(variant)
+            self._cast_variant_values(
+                {
+                    "admin_graphql_api_id": variant["id"],
+                    "barcode": variant["barcode"],
+                    "compare_at_price": variant["compareAtPrice"],
+                    "created_at": variant["createdAt"],
+                    "fulfillment_service": variant["fulfillmentService"]["handle"],
+                    "grams": None,  # No longer supported by GraphQL API
+                    "id": self._extract_int_id(variant["id"]),
+                    "inventory_item_id": self._extract_int_id(variant["inventoryItem"]["id"]),
+                    "inventory_management": None,  # No longer supported by GraphQL API
+                    "inventory_policy": variant["inventoryPolicy"],
+                    "inventory_quantity": variant["inventoryQuantity"],
+                    "old_inventory_quantity": None,  # No longer supported by GraphQL API
+                    "position": variant["position"],
+                    "price": variant["price"],
+                    "requires_shipping": variant["inventoryItem"]["requiresShipping"],
+                    "sku": variant["sku"],
+                    "tax_code": variant["taxCode"],
+                    "taxable": variant["taxable"],
+                    "title": variant["title"],
+                    "updated_at": variant["updatedAt"],
+                    "weight": variant["weight"],
+                    "weight_unit": variant["weightUnit"],
+                } | self._extract_variant_options(variant)
+            )
             for variant in self.graphql_product.get("variants", {}).get("nodes", [])
         ]
 
