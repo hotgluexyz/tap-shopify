@@ -27,7 +27,7 @@ class Markets(Stream):
     replication_method = 'FULL_TABLE'
     replication_key = None
     results_per_page = 100
-    gql_query = "query tapShopify($first: Int, $after: String) { markets(first: $first, after: $after) { edges { cursor node { currencySettings { baseCurrency { currencyCode currencyName enabled rateUpdatedAt } localCurrencies } enabled handle id name primary webPresence { alternateLocales defaultLocale id rootUrls { locale url } subfolderSuffix } } }, pageInfo { hasNextPage } } }"
+    gql_query = "query tapShopify($first: Int, $after: String) { markets(first: $first, after: $after) { edges { cursor node { currencySettings { baseCurrency { currencyCode currencyName enabled rateUpdatedAt } localCurrencies } enabled handle id name primary webPresence { alternateLocales {locale marketWebPresences { id } name primary published } defaultLocale { locale marketWebPresences { id } name primary published } id rootUrls { locale url } subfolderSuffix } } }, pageInfo { hasNextPage } } }"
 
     @shopify_error_handling
     def call_api_for_incoming_items(self):
