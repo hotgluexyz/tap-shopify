@@ -32,6 +32,7 @@ class ProductCompatibility():
                 "id": self._extract_int_id(image["id"]),
                 "admin_graphql_api_id": image["id"],
                 "position": idx + 1,
+                "alt": image["altText"],
                 "created_at": None,  # No longer supported by GraphQL API
                 "updated_at": None,  # No longer supported by GraphQL API
                 "width": image["width"],
@@ -72,6 +73,7 @@ class ProductCompatibility():
                 "fulfillment_service": variant["fulfillmentService"]["handle"],
                 "grams": None,  # No longer supported by GraphQL API
                 "id": self._extract_int_id(variant["id"]),
+                "image_id": self._extract_int_id(variant["image"]["id"]) if variant.get("image") else None,
                 "inventory_item_id": self._extract_int_id(variant["inventoryItem"]["id"]),
                 "inventory_management": None,  # No longer supported by GraphQL API
                 "inventory_policy": variant["inventoryPolicy"],
