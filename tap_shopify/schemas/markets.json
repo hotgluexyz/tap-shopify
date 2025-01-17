@@ -111,8 +111,51 @@
                 "alternateLocales": {
                     "items": {
                         "type": [
-                            "string"
-                        ]
+                            "object",
+                            "null"
+                        ],
+                        "properties": {
+                            "locale": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "marketWebPresences": {
+                                "type": [
+                                    "array",
+                                    "null"
+                                ],
+                                "items": {
+                                    "properties": {
+                                        "id": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        }
+                                    }
+                                }
+                            },
+                            "name": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "primary": {
+                                "type": [
+                                    "boolean",
+                                    "null"
+                                ]
+                            },
+                            "published": {
+                                "type": [
+                                    "boolean",
+                                    "null"
+                                ]
+                            }
+                        }
                     },
                     "type": [
                         "array",
@@ -121,9 +164,51 @@
                 },
                 "defaultLocale": {
                     "type": [
-                        "string",
+                        "object",
                         "null"
-                    ]
+                    ],
+                    "properties": {
+                        "locale": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        },
+                        "marketWebPresences": {
+                            "type": [
+                                "array",
+                                "null"
+                            ],
+                            "items": {
+                                "properties": {
+                                    "id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                }
+                            }
+                        },
+                        "name": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        },
+                        "primary": {
+                            "type": [
+                                "boolean",
+                                "null"
+                            ]
+                        },
+                        "published": {
+                            "type": [
+                                "boolean",
+                                "null"
+                            ]
+                        }
+                    }
                 },
                 "id": {
                     "type": [
