@@ -5,7 +5,7 @@ import json
 from datetime import timedelta
 import singer
 from singer.utils import strftime
-from streams.compatibility.product_compatibility import ProductCompatibility
+from tap_shopify.streams.compatibility.product_compatibility import ProductCompatibility
 
 LOGGER = singer.get_logger()
 
