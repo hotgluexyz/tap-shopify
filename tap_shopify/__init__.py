@@ -33,8 +33,10 @@ def initialize_shopify_client():
     version = Context.config.get('api_version', '2024-01')
     session = shopify.Session(shop, version, api_key)
     shopify.ShopifyResource.activate_session(session)
+    graphql_version = Context.config.get('graphql_api_version', '2024-04')
+    graphql_session = shopify.Session(shop, graphql_version, api_key)
     # Shop.current() makes a call for shop details with provided shop and api_key
-    return shopify.Shop.current().attributes
+    return shopify.Shop.current().attributes, session, graphql_session
 
 def get_abs_path(path):
     return os.path.join(os.path.dirname(os.path.realpath(__file__)), path)
@@ -135,7 +137,7 @@ def shuffle_streams(stream_name):
 
 # pylint: disable=too-many-locals
 def sync():
-    shop_attributes = initialize_shopify_client()
+    shop_attributes, rest_session, graphql_session = initialize_shopify_client()
     sdc_fields = {"_sdc_shop_" + x: shop_attributes[x] for x in SDC_KEYS}
 
     # Emit all schemas first so we have them for child streams
@@ -169,6 +171,12 @@ def sync():
             continue
 
         LOGGER.info('Syncing stream: %s', stream_id)
+
+        if stream_id in ["products", "incoming_items"]:
+            shopify.ShopifyResource.activate_session(graphql_session)
+        else:
+            shopify.ShopifyResource.activate_session(rest_session)
+
 
         if not Context.state.get('bookmarks'):
             Context.state['bookmarks'] = {}
