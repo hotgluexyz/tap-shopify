@@ -78,6 +78,34 @@
                 "null"
             ]
         },
+        "regions": {
+            "type": [
+                "array",
+                "null"
+            ],
+            "items": {
+                "properties": {
+                    "id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "name": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "code": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                }
+            }
+        },
         "webPresence": {
             "properties": {
                 "alternateLocales": {
