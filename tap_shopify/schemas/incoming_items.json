@@ -6,10 +6,27 @@
         "string"
       ]
     },
-    "incoming": {
+    "quantities": {
+      "items": {
+        "properties": {
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "quantity": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
       "type": [
-        "null",
-        "integer"
+        "array",
+        "null"
       ]
     }
   },
