@@ -51,13 +51,13 @@ def retry_after_wait_gen(**kwargs):
     yield math.ceil(float(sleep_time_str))
 
 def shopify_error_handling(fnc):
-    @backoff.on_exception(backoff.expo,
-                          (pyactiveresource.connection.ServerError,
-                           pyactiveresource.formats.Error,
-                           simplejson.scanner.JSONDecodeError,
-                           Exception),
-                          on_backoff=retry_handler,
-                          max_tries=MAX_RETRIES)
+    # @backoff.on_exception(backoff.expo,
+    #                       (pyactiveresource.connection.ServerError,
+    #                        pyactiveresource.formats.Error,
+    #                        simplejson.scanner.JSONDecodeError,
+    #                        Exception),
+    #                       on_backoff=retry_handler,
+    #                       max_tries=MAX_RETRIES)
     @backoff.on_exception(retry_after_wait_gen,
                           pyactiveresource.connection.ClientError,
                           giveup=is_not_status_code_fn([429]),

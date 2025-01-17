@@ -73,7 +73,7 @@ class ProductCategory(Stream):
         for incoming_item in self.get_objects():
             replication_value = strptime_to_utc(incoming_item[self.replication_key])
             if replication_value >= bookmark:
-              
+
                 yield incoming_item
             if replication_value > self.max_bookmark:
                 self.max_bookmark = replication_value

@@ -25,10 +25,10 @@ class InventoryItems(Stream):
 
         # Page through all `products`, bookmarking at `product_variants`
         for parent_object in selected_parent.get_objects():
-
-            product_variants = parent_object.variants
+            product_dict = parent_object.to_dict()
+            product_variants = product_dict["variants"]
             inventory_items_ids = ",".join(
-                [str(product_variant.inventory_item_id) for product_variant in product_variants])
+                [str(product_variant["inventory_item_id"]) for product_variant in product_variants])
 
             # Max limit of IDs is 100 and Max limit of product_variants in one product is also 100
             # hence we can directly pass all inventory_items_ids

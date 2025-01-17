@@ -1,15 +1,23 @@
 import json
 import os
+import shopify.resources
 
 class ProductCompatibility():
     def __init__(self, graphql_product):
         """Initialize with a GraphQL product object."""
         self.graphql_product = graphql_product
+        self.admin_graphql_api_id = graphql_product["id"]
         self.product_id = self._extract_int_id(graphql_product["id"])
+
         current_dir = os.path.dirname(os.path.abspath(__file__))
         value_map_path = os.path.join(current_dir, "value_maps", "product.json")
         with open(value_map_path, 'r') as file:
             self.value_map = json.load(file)
+
+    def metafields(self, _options=None, **kwargs):
+        if _options is None:
+            _options = kwargs
+        return shopify.resources.Metafield.find(resource="products", resource_id=self.product_id, **_options)
 
     def _extract_int_id(self, string_id):
         return int(string_id.split("/")[-1])
