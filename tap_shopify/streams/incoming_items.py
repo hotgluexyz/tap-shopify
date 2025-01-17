@@ -24,15 +24,18 @@ class HiddenPrints:
 class IncomingItems(Stream):
     name = 'incoming_items'
     replication_key = 'createdAt'
-    gql_query = "query inventoryLevel($id: ID!){inventoryLevel(id: $id){id, incoming, createdAt}}"
+    gql_query = 'query inventoryLevel($id: ID!){inventoryLevel(id: $id){id, quantities(names: ["incoming"]) {name, quantity}, createdAt}}'
 
     @shopify_error_handling
     def call_api_for_incoming_items(self, parent_object):
         gql_client = shopify.GraphQL()
         with HiddenPrints():
             response = gql_client.execute(self.gql_query, dict(id=parent_object.admin_graphql_api_id))
-        return json.loads(response)
-
+        res = json.loads(response)
+        if "error" in res:
+            raise Exception(res)
+        return res 
+    
     def get_objects(self):
         selected_parent = Context.stream_objects['inventory_levels']()
         selected_parent.name = "inventory_levels"
