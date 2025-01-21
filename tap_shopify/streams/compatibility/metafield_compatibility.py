@@ -24,7 +24,8 @@ class MetafieldCompatibility(CompatibilityMixin):
             "namespace": self.graphql_metafield["namespace"],
             "description": self.graphql_metafield["description"],
             "value": self.graphql_metafield["value"],
-            "updated_at": self.graphql_metafield["updatedAt"]
+            "updated_at": self.graphql_metafield["updatedAt"],
+            "owner_id": None # no longer supported in GraphQL
         }
 
         return self._cast_values(metafield_dict, self.value_map)
