@@ -173,7 +173,7 @@ def sync():
 
         LOGGER.info('Syncing stream: %s', stream_id)
 
-        if stream_id in ["products", "incoming_items"]:
+        if stream_id in ["products", "incoming_items", "metafields"]:
             shopify.ShopifyResource.activate_session(graphql_session)
         else:
             shopify.ShopifyResource.activate_session(rest_session)

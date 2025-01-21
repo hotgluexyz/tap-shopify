@@ -1,8 +1,11 @@
 import json
 import os
 import shopify.resources
+from tap_shopify.streams.base import (shopify_error_handling)
+from tap_shopify.streams.compatibility.metafield_compatibility import MetafieldCompatibility
+from tap_shopify.streams.compatibility.compatibility_mixin import CompatibilityMixin
 
-class ProductCompatibility():
+class ProductCompatibility(CompatibilityMixin):
     def __init__(self, graphql_product):
         """Initialize with a GraphQL product object."""
         self.graphql_product = graphql_product
@@ -14,13 +17,56 @@ class ProductCompatibility():
         with open(value_map_path, 'r') as file:
             self.value_map = json.load(file)
 
-    def metafields(self, _options=None, **kwargs):
-        if _options is None:
-            _options = kwargs
-        return shopify.resources.Metafield.find(resource="products", resource_id=self.product_id, **_options)
+    # @shopify_error_handling
+    def _call_api_for_metafields(self, gql_client, cursor=None):
+        gql_query = """
+            query GetProduct($id: ID!, $cursor: String) {
+              product(id: $id) {
+                metafields(first: 175, after: $cursor) {
+                  pageInfo {
+                    endCursor
+                    hasNextPage
+                  }
+                  nodes {
+                    id
+                    namespace
+                    key
+                    value
+                    description
+                    createdAt
+                    updatedAt
+                    ownerType
+                  }
+                }
+              }
+            }
+        """
+        variables = {
+            "id": self.admin_graphql_api_id,
+            "cursor": cursor
+        }
 
-    def _extract_int_id(self, string_id):
-        return int(string_id.split("/")[-1])
+        response = gql_client.execute(gql_query, variables)
+        result = json.loads(response)
+        if result.get("errors"):
+            raise Exception(result['errors'])
+        return result
+
+    def metafields(self):
+        gql_client = shopify.GraphQL()
+        cursor = None
+        while True:
+            page = self._call_api_for_metafields(gql_client, cursor)
+            metafields = page['data']['product']['metafields']['nodes']
+            page_info = page['data']['product']['metafields']['pageInfo']
+
+            for metafield in metafields:
+                yield MetafieldCompatibility(metafield)
+
+            if page_info['hasNextPage']:
+                cursor = page_info['endCursor']
+            else:
+                break
 
     def _convert_options(self):
         return [
@@ -100,24 +146,6 @@ class ProductCompatibility():
             } | self._extract_variant_options(variant)
             for variant in self.graphql_product.get("variants", {}).get("nodes", [])
         ]
-
-    def _cast_values(self, data, mappings):
-        """
-        Recursively traverse and cast values in a dictionary or list based on mappings.
-        :param data: The data to process (dictionary, list, or scalar).
-        :param mappings: The mapping dictionary to use for casting.
-        :return: The processed data with values cast according to the mappings.
-        """
-        if isinstance(data, dict):
-            return {
-                key: self._cast_values(value, mappings.get(key, {}))
-                for key, value in data.items()
-            }
-        elif isinstance(data, list):
-            return [self._cast_values(item, mappings) for item in data]
-        elif data in mappings:
-            return mappings[data]
-        return data
 
     def to_dict(self):
         """Return the REST API-compatible product as a dictionary."""

@@ -1,0 +1,28 @@
+{
+    "owner_resource": {
+        "API_PERMISSION": "api_permission",
+        "ARTICLE": "article",
+        "BLOG": "blog",
+        "CARTTRANSFORM": "carttransform",
+        "COLLECTION": "collection",
+        "COMPANY": "company",
+        "COMPANY_LOCATION": "company_location",
+        "CUSTOMER": "customer",
+        "DELIVERY_CUSTOMIZATION": "delivery_customization",
+        "DISCOUNT": "discount",
+        "DRAFTORDER": "draftorder",
+        "FULFILLMENT_CONSTRAINT_RULE": "fulfillment_constraint_rule",
+        "LOCATION": "location",
+        "MARKET": "market",
+        "ORDER": "order",
+        "ORDER_ROUTING_LOCATION_RULE": "order_routing_location_rule",
+        "PAGE": "page",
+        "PAYMENT_CUSTOMIZATION": "payment_customization",
+        "PRODUCT": "product",
+        "PRODUCTVARIANT": "productvariant",
+        "SHOP": "shop",
+        "VALIDATION": "validation",
+        "MEDIA_IMAGE": "media_image",
+        "PRODUCTIMAGE": "productimage"
+    }
+}
