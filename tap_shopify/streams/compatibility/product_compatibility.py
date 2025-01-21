@@ -17,7 +17,7 @@ class ProductCompatibility(CompatibilityMixin):
         with open(value_map_path, 'r') as file:
             self.value_map = json.load(file)
 
-    # @shopify_error_handling
+    @shopify_error_handling
     def _call_api_for_metafields(self, gql_client, cursor=None):
         gql_query = """
             query GetProduct($id: ID!, $cursor: String) {
