@@ -26,9 +26,17 @@ setup(
     [console_scripts]
     tap-shopify=tap_shopify:main
     """,
-    packages=["tap_shopify"],
-    package_data = {
-        "schemas": ["tap_shopify/schemas/*.json"]
+    packages=[
+        "tap_shopify",
+        "tap_shopify.streams",
+        "tap_shopify.streams.compatibility",
+        "tap_shopify.streams.compatibility.value_maps",
+    ],
+    package_data={
+        "tap_shopify": [
+            "schemas/*.json",
+            "streams/compatibility/value_maps/*.json",
+        ]
     },
     include_package_data=True,
 )
