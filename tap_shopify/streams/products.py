@@ -117,176 +117,156 @@ class Products(Stream):
         }
     """
 
-    # @shopify_error_handling
-    def call_api_for_products_metafields(self, gql_client, query, cursor=None, metafields_cursor=None):
-        variables = {
-            "query": query,
-            "cursor": cursor,
-            "metafields_cursor": metafields_cursor
+    product_metafields_gql_query = """
+        query GetProduct($id: ID!, $cursor: String) {
+            product(id: $id) {
+                metafields(first: 175, after: $cursor) {
+                    pageInfo {
+                        endCursor
+                        hasNextPage
+                    }
+                    nodes {
+                        id
+                        namespace
+                        key
+                        value
+                        description
+                        createdAt
+                        updatedAt
+                        ownerType
+                    }
+                }
+            }
         }
-        response = gql_client.execute(self.products_metafields_gql_query, variables)
+    """
+
+    @shopify_error_handling
+    def _call_api(self, query, variables):
+        """
+        Generalized method for making API calls with a GraphQL client.
+        """
+        gql_client = shopify.GraphQL()
+        response = gql_client.execute(query, variables)
         result = json.loads(response)
         if result.get("errors"):
             raise Exception(result['errors'])
         return result
 
     def get_products_metafields(self, updated_at_min, updated_at_max, cursor=None, metafields_cursor=None):
-        gql_client = shopify.GraphQL()
         query = f"updated_at:>'{updated_at_min.isoformat()}' AND updated_at:<'{updated_at_max.isoformat()}'"
-        page = self.call_api_for_products_metafields(gql_client, query, cursor, metafields_cursor)
-        return page
+        variables = {
+            "query": query,
+            "cursor": cursor,
+            "metafields_cursor": metafields_cursor
+        }
+        return self._call_api(self.products_metafields_gql_query, variables)
 
-    # @shopify_error_handling
     def get_product_metafields(self, product_id, cursor=None):
-        gql_client = shopify.GraphQL()
-
-        gql_query = """
-            query GetProduct($id: ID!, $cursor: String) {
-              product(id: $id) {
-                metafields(first: 175, after: $cursor) {
-                  pageInfo {
-                    endCursor
-                    hasNextPage
-                  }
-                  nodes {
-                    id
-                    namespace
-                    key
-                    value
-                    description
-                    createdAt
-                    updatedAt
-                    ownerType
-                  }
-                }
-              }
-            }
-        """
         variables = {
             "id": product_id,
             "cursor": cursor
         }
+        return self._call_api(self.product_metafields_gql_query, variables)
 
-        response = gql_client.execute(gql_query, variables)
-        result = json.loads(response)
-        if result.get("errors"):
-            raise Exception(result['errors'])
-        return result
-
-    def get_objects_with_metafields(self):
-        updated_at_min = self.get_bookmark()
-        stop_time = singer.utils.now().replace(microsecond=0)
-        date_window_size = float(Context.config.get("date_window_size", 1))
-
-        while updated_at_min < stop_time:
-            updated_at_max = updated_at_min + timedelta(days=date_window_size)
-            if updated_at_max > stop_time:
-                updated_at_max = stop_time
-
-            cursor = None
-
-            page_count = 0
-            while True:
-                log_message = f"Fetching metafields for products updated between {updated_at_min} and {updated_at_max}, page {page_count}"
-                if cursor:
-                    log_message += f" with cursor {cursor}"
-                LOGGER.info(log_message)
-
-                page = self.get_products_metafields(updated_at_min, updated_at_max, cursor)
-                products = page['data']['products']['nodes']
-                page_info = page['data']['products']['pageInfo']
-
-                for product in products:
-                    metafields_cursor = None
-                    metafields = product['metafields']['nodes']
-                    metafields_page_info = product['metafields']['pageInfo']
-
-                    metafields_page_count = 0
-                    while True:
-                        for metafield in metafields:
-                            yield MetafieldCompatibility(metafield)
-
-                        # Fetch the next page of metafields if available
-                        if metafields_page_info['hasNextPage']:
-                            metafields_page_count +=1
-                            metafields_cursor = metafields_page_info['endCursor']
-                            log_message = f"Product with id {product['id']} has additional metafields, fetching page {metafields_page_count}"
-                            if cursor:
-                                log_message += f" with cursor {cursor}"
-                            LOGGER.info(log_message)
-                            product_page = self.get_product_metafields(product["id"], metafields_cursor)
-                            metafields = product_page['data']['product']['metafields']['nodes']
-                            metafields_page_info = product_page['data']['product']['metafields']['pageInfo']
-                        else:
-                            break  # Exit metafields loop
-
-                # Update the cursor for the next page of products
-                if page_info['hasNextPage']:
-                    cursor = page_info['endCursor']
-                else:
-                    break  # Exit products pagination loop
-
-            # Update the bookmark for the next batch
-            updated_at_min = updated_at_max
-            self.update_bookmark(strftime(updated_at_min))
-
-
-    # @shopify_error_handling
-    def call_api_for_products(self, gql_client, query, cursor=None):
+    def get_products(self, updated_at_min, updated_at_max, cursor=None):
+        query = f"updated_at:>'{updated_at_min.isoformat()}' AND updated_at:<'{updated_at_max.isoformat()}'"
         variables = {
             "query": query,
             "cursor": cursor
         }
-        response = gql_client.execute(self.products_gql_query, variables)
-        result = json.loads(response)
-        if result.get("errors"):
-            raise Exception(result['errors'])
-        return result
+        return self._call_api(self.products_gql_query, variables)
 
-    def get_products(self, updated_at_min, updated_at_max, cursor=None):
-        gql_client = shopify.GraphQL()
-        query = f"updated_at:>'{updated_at_min.isoformat()}' AND updated_at:<'{updated_at_max.isoformat()}'"
+    def paginate(self, fetch_page, updated_at_min, updated_at_max, process_item, item_type):
+        """
+        Generic pagination logic for fetching and processing paginated results.
 
-        page = self.call_api_for_products(gql_client, query, cursor)
-        return page
+        :param fetch_page: A function that takes (updated_at_min, updated_at_max, cursor)
+                           and returns a page of results.
+        :param updated_at_min: The minimum update time for the query.
+        :param updated_at_max: The maximum update time for the query.
+        :param process_item: A function to process individual items in the result.
+        :returns: A generator that yields processed items.
+        """
+        cursor = None
+        page_count = 0
 
+        while True:
+            log_message = f"Fetching {item_type} updated between {updated_at_min} and {updated_at_max}, page {page_count}"
+            if cursor:
+                log_message += f" with cursor {cursor}"
+            LOGGER.info(log_message)
 
-    def get_objects(self):
+            page = fetch_page(updated_at_min, updated_at_max, cursor)
+            items = page['data']['products']['nodes']
+            page_info = page['data']['products']['pageInfo']
+
+            for item in items:
+                yield from process_item(item)  # Use `yield from` to handle nested generators
+
+            if page_info['hasNextPage']:
+                cursor = page_info['endCursor']
+                page_count += 1
+            else:
+                break
+
+    def get_objects_with_metafields(self):
+        def process_product(product):
+            metafields_cursor = None
+            metafields = product['metafields']['nodes']
+            metafields_page_info = product['metafields']['pageInfo']
+            metafields_page_count = 0
+
+            while True:
+                for metafield in metafields:
+                    yield MetafieldCompatibility(metafield)
+
+                if metafields_page_info['hasNextPage']:
+                    metafields_cursor = metafields_page_info['endCursor']
+                    metafields_page_count += 1
+                    LOGGER.info(f"Product {product['id']} has additional metafields, fetching page {metafields_page_count} with cursor {metafields_cursor}")
+                    metafields_page = self.get_product_metafields(product['id'], metafields_cursor)
+                    metafields = metafields_page['data']['product']['metafields']['nodes']
+                    metafields_page_info = metafields_page['data']['product']['metafields']['pageInfo']
+                else:
+                    break
+
         updated_at_min = self.get_bookmark()
         stop_time = singer.utils.now().replace(microsecond=0)
         date_window_size = float(Context.config.get("date_window_size", 1))
 
         while updated_at_min < stop_time:
-            updated_at_max = updated_at_min + timedelta(days=date_window_size)
-            if updated_at_max > stop_time:
-                updated_at_max = stop_time
+            updated_at_max = min(updated_at_min + timedelta(days=date_window_size), stop_time)
 
-            cursor = None
-
-            page_count = 0
-            while True:
-                log_message = f"Fetching products updated between {updated_at_min} and {updated_at_max}, page {page_count}"
-                if cursor:
-                    log_message += f" with cursor {cursor}"
-                LOGGER.info(log_message)
-
-                page = self.get_products(updated_at_min, updated_at_max, cursor)
-                products = page['data']['products']['nodes']
-                page_info = page['data']['products']['pageInfo']
-
-                for product in products:
-                    yield ProductCompatibility(product)
-
-                # Update the cursor and check if there's another page
-                if page_info['hasNextPage']:
-                    cursor = page_info['endCursor']
-                    page_count += 1
-                else:
-                    page_count = 0
-                    break
-
-            # Update the bookmark for the next batch
+            yield from self.paginate(
+                fetch_page=self.get_products_metafields,
+                updated_at_min=updated_at_min,
+                updated_at_max=updated_at_max,
+                process_item=process_product,
+                item_type="products_metafields"
+            )
             updated_at_min = updated_at_max
             self.update_bookmark(strftime(updated_at_min))
+
+    def get_objects(self):
+        def process_product(product):
+            yield ProductCompatibility(product)
+
+        updated_at_min = self.get_bookmark()
+        stop_time = singer.utils.now().replace(microsecond=0)
+        date_window_size = float(Context.config.get("date_window_size", 1))
+
+        while updated_at_min < stop_time:
+            updated_at_max = min(updated_at_min + timedelta(days=date_window_size), stop_time)
+
+            yield from self.paginate(
+                fetch_page=self.get_products,
+                updated_at_min=updated_at_min,
+                updated_at_max=updated_at_max,
+                process_item=process_product,
+                item_type="products"
+            )
+            updated_at_min = updated_at_max
+            self.update_bookmark(strftime(updated_at_min))
+
 
 Context.stream_objects['products'] = Products
