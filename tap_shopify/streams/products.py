@@ -7,6 +7,7 @@ import singer
 from singer.utils import strftime
 from tap_shopify.streams.compatibility.product_compatibility import ProductCompatibility
 from tap_shopify.streams.compatibility.metafield_compatibility import MetafieldCompatibility
+from tap_shopify.streams.compatibility.product_category_compatibility import ProductCategoryCompatibility
 
 LOGGER = singer.get_logger()
 
@@ -76,6 +77,31 @@ class Products(Stream):
                                 name
                                 value
                             }
+                        }
+                    }
+                }
+                pageInfo {
+                    hasNextPage
+                    endCursor
+                }
+            }
+        }
+    """
+
+    products_category_gql_query = """
+        query GetProducts($query: String, $cursor: String) {
+            products(first: 250, after: $cursor, query: $query) {
+                nodes {
+                    id,
+                    productType,
+                    createdAt,
+                    productCategory{
+                        productTaxonomyNode{
+                            id,
+                            fullName,
+                            isLeaf,
+                            isRoot
+
                         }
                     }
                 }
@@ -168,6 +194,14 @@ class Products(Stream):
         }
         return self._call_api(self.product_metafields_gql_query, variables)
 
+    def get_products_category(self, updated_at_min, updated_at_max, cursor=None):
+        query = f"updated_at:>'{updated_at_min.isoformat()}' AND updated_at:<'{updated_at_max.isoformat()}'"
+        variables = {
+            "query": query,
+            "cursor": cursor
+        }
+        return self._call_api(self.products_category_gql_query, variables)
+
     def get_products(self, updated_at_min, updated_at_max, cursor=None):
         query = f"updated_at:>'{updated_at_min.isoformat()}' AND updated_at:<'{updated_at_max.isoformat()}'"
         variables = {
@@ -185,6 +219,7 @@ class Products(Stream):
         :param updated_at_min: The minimum update time for the query.
         :param updated_at_max: The maximum update time for the query.
         :param process_item: A function to process individual items in the result.
+        :param item_type: A string used in the log message.
         :returns: A generator that yields processed items.
         """
         cursor = None
@@ -247,6 +282,28 @@ class Products(Stream):
             updated_at_min = updated_at_max
             self.update_bookmark(strftime(updated_at_min))
 
+    def get_objects_with_categories(self):
+        def process_product(product):
+            if product.get('productCategory'):
+                yield ProductCategoryCompatibility(product).to_dict()
+
+        updated_at_min = self.get_bookmark()
+        stop_time = singer.utils.now().replace(microsecond=0)
+        date_window_size = float(Context.config.get("date_window_size", 1))
+
+        while updated_at_min < stop_time:
+            updated_at_max = min(updated_at_min + timedelta(days=date_window_size), stop_time)
+
+            yield from self.paginate(
+                fetch_page=self.get_products_category,
+                updated_at_min=updated_at_min,
+                updated_at_max=updated_at_max,
+                process_item=process_product,
+                item_type="product_categories"
+            )
+            updated_at_min = updated_at_max
+            self.update_bookmark(strftime(updated_at_min))
+
     def get_objects(self):
         def process_product(product):
             yield ProductCompatibility(product)
@@ -267,6 +324,5 @@ class Products(Stream):
             )
             updated_at_min = updated_at_max
             self.update_bookmark(strftime(updated_at_min))
-
 
 Context.stream_objects['products'] = Products
