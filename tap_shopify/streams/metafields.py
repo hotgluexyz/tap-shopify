@@ -38,11 +38,11 @@ class Metafields(Stream):
             # to make resetting individual streams easier.
             selected_parent.name = "metafield_{}".format(selected_parent.name)
 
-            for parent_object in selected_parent.get_objects():
-                if selected_parent.name == "metafield_products":
-                    for metafield in parent_object.metafields():
-                        yield metafield
-                else:
+            if selected_parent.name == "metafield_products":
+                for metafield in selected_parent.get_objects_with_metafields():
+                    yield metafield
+            else:
+                for parent_object in selected_parent.get_objects():
                     since_id = 1
                     while True:
                         metafields = get_metafields(parent_object, since_id)
