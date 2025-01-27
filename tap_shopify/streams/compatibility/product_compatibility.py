@@ -119,31 +119,34 @@ class ProductCompatibility(CompatibilityMixin):
 
     def _convert_variants(self):
         return [
-            {
-                "admin_graphql_api_id": variant["id"],
-                "barcode": variant["barcode"],
-                "compare_at_price": variant["compareAtPrice"],
-                "created_at": variant["createdAt"],
-                "fulfillment_service": variant["fulfillmentService"]["handle"],
-                "grams": None,  # No longer supported by GraphQL API
-                "id": self._extract_int_id(variant["id"]),
-                "image_id": self._extract_int_id(variant["image"]["id"]) if variant.get("image") else None,
-                "inventory_item_id": self._extract_int_id(variant["inventoryItem"]["id"]),
-                "inventory_management": None,  # No longer supported by GraphQL API
-                "inventory_policy": variant["inventoryPolicy"],
-                "inventory_quantity": variant["inventoryQuantity"],
-                "old_inventory_quantity": None,  # No longer supported by GraphQL API
-                "position": variant["position"],
-                "price": variant["price"],
-                "requires_shipping": variant["inventoryItem"]["requiresShipping"],
-                "sku": variant["sku"],
-                "tax_code": variant["taxCode"],
-                "taxable": variant["taxable"],
-                "title": variant["title"],
-                "updated_at": variant["updatedAt"],
-                "weight": variant["weight"],
-                "weight_unit": variant["weightUnit"],
-            } | self._extract_variant_options(variant)
+            dict(
+                {
+                    "admin_graphql_api_id": variant["id"],
+                    "barcode": variant["barcode"],
+                    "compare_at_price": variant["compareAtPrice"],
+                    "created_at": variant["createdAt"],
+                    "fulfillment_service": variant["fulfillmentService"]["handle"],
+                    "grams": None,  # No longer supported by GraphQL API
+                    "id": self._extract_int_id(variant["id"]),
+                    "image_id": self._extract_int_id(variant["image"]["id"]) if variant.get("image") else None,
+                    "inventory_item_id": self._extract_int_id(variant["inventoryItem"]["id"]),
+                    "inventory_management": None,  # No longer supported by GraphQL API
+                    "inventory_policy": variant["inventoryPolicy"],
+                    "inventory_quantity": variant["inventoryQuantity"],
+                    "old_inventory_quantity": None,  # No longer supported by GraphQL API
+                    "position": variant["position"],
+                    "price": variant["price"],
+                    "requires_shipping": variant["inventoryItem"]["requiresShipping"],
+                    "sku": variant["sku"],
+                    "tax_code": variant["taxCode"],
+                    "taxable": variant["taxable"],
+                    "title": variant["title"],
+                    "updated_at": variant["updatedAt"],
+                    "weight": variant["weight"],
+                    "weight_unit": variant["weightUnit"],
+                },
+                **self._extract_variant_options(variant),
+            )
             for variant in self.graphql_product.get("variants", {}).get("nodes", [])
         ]
 
