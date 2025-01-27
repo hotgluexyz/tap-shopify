@@ -1,0 +1,19 @@
+{
+    "status": {
+        "ACTIVE": "active",
+        "ARCHIVED": "archived",
+        "DRAFT": "draft"
+    },
+    "variants": {
+        "inventory_policy": {
+            "DENY": "deny",
+            "CONTINUE": "continue"
+        },
+        "weight_unit": {
+            "GRAMS": "g",
+            "KILOGRAMS": "kg",
+            "OUNCES": "oz",
+            "POUNDS": "lb"
+        }
+    }
+}
