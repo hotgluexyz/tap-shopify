@@ -13,6 +13,7 @@ setup(
     install_requires=[
         "ShopifyAPI==12.7.0",
         "singer-python==5.12.1",
+        "requests==2.32.3"
     ],
     extras_require={
         'dev': [
