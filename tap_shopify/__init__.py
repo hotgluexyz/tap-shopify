@@ -25,7 +25,7 @@ SDC_KEYS = {'id': 'integer', 'name': 'string', 'myshopify_domain': 'string'}
 
 logging.getLogger('backoff').setLevel(logging.CRITICAL)
 
-# @shopify_error_handling
+@shopify_error_handling
 def initialize_shopify_client():
     api_key = Context.config.get('access_token') or Context.config.get('api_key')
     if api_key is None:
@@ -212,11 +212,6 @@ def sync():
             continue
 
         LOGGER.info('Syncing stream: %s', stream_id)
-
-        # if stream_id in ["products", "incoming_items", "metafields"]:
-            # shopify.ShopifyResource.activate_session(graphql_session)
-        # else:
-            # shopify.ShopifyResource.activate_session(rest_session)
 
         if not Context.state.get('bookmarks'):
             Context.state['bookmarks'] = {}

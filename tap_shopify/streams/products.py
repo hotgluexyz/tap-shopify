@@ -166,7 +166,7 @@ class Products(Stream):
         }
     """
 
-    # @shopify_error_handling
+    @shopify_error_handling
     def _call_api(self, query, variables):
         """
         Generalized method for making API calls with a GraphQL client.
