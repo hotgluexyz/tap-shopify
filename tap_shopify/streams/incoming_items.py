@@ -28,14 +28,16 @@ class IncomingItems(Stream):
 
     @shopify_error_handling
     def call_api_for_incoming_items(self, parent_object):
+        shopify.ShopifyResource.activate_session(Context.shopify_graphql_session)
         gql_client = shopify.GraphQL()
         with HiddenPrints():
             response = gql_client.execute(self.gql_query, dict(id=parent_object.admin_graphql_api_id))
         res = json.loads(response)
+        shopify.ShopifyResource.activate_session(Context.shopify_rest_session)
         if "error" in res:
             raise Exception(res)
-        return res 
-    
+        return res
+
     def get_objects(self):
         selected_parent = Context.stream_objects['inventory_levels']()
         selected_parent.name = "inventory_levels"

@@ -166,14 +166,16 @@ class Products(Stream):
         }
     """
 
-    @shopify_error_handling
+    # @shopify_error_handling
     def _call_api(self, query, variables):
         """
         Generalized method for making API calls with a GraphQL client.
         """
+        shopify.ShopifyResource.activate_session(Context.shopify_graphql_session)
         gql_client = shopify.GraphQL()
         response = gql_client.execute(query, variables)
         result = json.loads(response)
+        shopify.ShopifyResource.activate_session(Context.shopify_rest_session)
         if result.get("errors"):
             raise Exception(result['errors'])
         return result

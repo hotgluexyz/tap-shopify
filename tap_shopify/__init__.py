@@ -6,6 +6,7 @@ import time
 import math
 import copy
 import logging
+import requests
 
 import pyactiveresource
 import shopify
@@ -24,7 +25,7 @@ SDC_KEYS = {'id': 'integer', 'name': 'string', 'myshopify_domain': 'string'}
 
 logging.getLogger('backoff').setLevel(logging.CRITICAL)
 
-@shopify_error_handling
+# @shopify_error_handling
 def initialize_shopify_client():
     api_key = Context.config.get('access_token') or Context.config.get('api_key')
     if api_key is None:
@@ -45,7 +46,7 @@ def initialize_shopify_client():
 
 def load_shop_id(shop, api_key):
     import requests
-        
+
     graphql_url = f"https://{shop}.myshopify.com/admin/api/2024-04/graphql.json"
     headers = {
         "Accept": "application/json",
@@ -60,13 +61,13 @@ def load_shop_id(shop, api_key):
         }
     }
     """
-    
+
     response = requests.post(
         graphql_url,
         headers=headers,
         json={"query": query}
     )
-    
+
     if hasattr(response, 'url'):
         # Extract shop ID from response URL
         shop_url = response.url
@@ -175,6 +176,10 @@ def shuffle_streams(stream_name):
 def sync():
     shop_attributes, rest_session, graphql_session = initialize_shopify_client()
     sdc_fields = {"_sdc_shop_" + x: shop_attributes[x] for x in SDC_KEYS}
+    Context.shopify_graphql_session = graphql_session
+    Context.shopify_rest_session = rest_session
+    shopify.ShopifyResource.activate_session(rest_session)
+
 
     # Emit all schemas first so we have them for child streams
     for stream in Context.catalog["streams"]:
@@ -208,10 +213,10 @@ def sync():
 
         LOGGER.info('Syncing stream: %s', stream_id)
 
-        if stream_id in ["products", "incoming_items", "metafields"]:
-            shopify.ShopifyResource.activate_session(graphql_session)
-        else:
-            shopify.ShopifyResource.activate_session(rest_session)
+        # if stream_id in ["products", "incoming_items", "metafields"]:
+            # shopify.ShopifyResource.activate_session(graphql_session)
+        # else:
+            # shopify.ShopifyResource.activate_session(rest_session)
 
         if not Context.state.get('bookmarks'):
             Context.state['bookmarks'] = {}
