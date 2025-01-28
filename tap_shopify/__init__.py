@@ -45,8 +45,6 @@ def initialize_shopify_client():
     return shopify.Shop.current().attributes, session, graphql_session
 
 def load_shop_id(shop, api_key):
-    import requests
-
     graphql_url = f"https://{shop}.myshopify.com/admin/api/2024-04/graphql.json"
     headers = {
         "Accept": "application/json",
