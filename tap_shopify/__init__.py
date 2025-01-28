@@ -33,11 +33,46 @@ def initialize_shopify_client():
     version = Context.config.get('api_version', '2024-01')
     session = shopify.Session(shop, version, api_key)
     shopify.ShopifyResource.activate_session(session)
+
+    # Make GraphQL request to get shop details if not in config
+    if not Context.config.get('shop_id'):
+        load_shop_id(shop, api_key)
     graphql_version = Context.config.get('graphql_api_version', '2024-04')
-    graphql_session = shopify.Session(shop, graphql_version, api_key)
+    graphql_session = shopify.Session(Context.config["shop_id"], graphql_version, api_key)
 
     # Shop.current() makes a call for shop details with provided shop and api_key
     return shopify.Shop.current().attributes, session, graphql_session
+
+def load_shop_id(shop, api_key):
+    import requests
+        
+    graphql_url = f"https://{shop}.myshopify.com/admin/api/2024-04/graphql.json"
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "X-Shopify-Access-Token": api_key
+    }
+    query = """
+    {
+        shop {
+            name
+            id
+        }
+    }
+    """
+    
+    response = requests.post(
+        graphql_url,
+        headers=headers,
+        json={"query": query}
+    )
+    
+    if hasattr(response, 'url'):
+        # Extract shop ID from response URL
+        shop_url = response.url
+        Context.config['shop_id'] = shop_url.split('/')[2].split('.')[0]
+    else:
+        LOGGER.warning("Failed to fetch shop details via GraphQL: %s", response.text)
 
 def get_abs_path(path):
     return os.path.join(os.path.dirname(os.path.realpath(__file__)), path)
