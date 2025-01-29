@@ -1,8 +1,5 @@
 import json
 import os
-import shopify.resources
-from tap_shopify.streams.base import (shopify_error_handling)
-from tap_shopify.streams.compatibility.metafield_compatibility import MetafieldCompatibility
 from tap_shopify.streams.compatibility.compatibility_mixin import CompatibilityMixin
 
 class ProductCompatibility(CompatibilityMixin):
@@ -16,57 +13,6 @@ class ProductCompatibility(CompatibilityMixin):
         value_map_path = os.path.join(current_dir, "value_maps", "product.json")
         with open(value_map_path, 'r') as file:
             self.value_map = json.load(file)
-
-    @shopify_error_handling
-    def _call_api_for_metafields(self, gql_client, cursor=None):
-        gql_query = """
-            query GetProduct($id: ID!, $cursor: String) {
-              product(id: $id) {
-                metafields(first: 175, after: $cursor) {
-                  pageInfo {
-                    endCursor
-                    hasNextPage
-                  }
-                  nodes {
-                    id
-                    namespace
-                    key
-                    value
-                    description
-                    createdAt
-                    updatedAt
-                    ownerType
-                  }
-                }
-              }
-            }
-        """
-        variables = {
-            "id": self.admin_graphql_api_id,
-            "cursor": cursor
-        }
-
-        response = gql_client.execute(gql_query, variables)
-        result = json.loads(response)
-        if result.get("errors"):
-            raise Exception(result['errors'])
-        return result
-
-    def metafields(self):
-        gql_client = shopify.GraphQL()
-        cursor = None
-        while True:
-            page = self._call_api_for_metafields(gql_client, cursor)
-            metafields = page['data']['product']['metafields']['nodes']
-            page_info = page['data']['product']['metafields']['pageInfo']
-
-            for metafield in metafields:
-                yield MetafieldCompatibility(metafield)
-
-            if page_info['hasNextPage']:
-                cursor = page_info['endCursor']
-            else:
-                break
 
     def _convert_options(self):
         return [
