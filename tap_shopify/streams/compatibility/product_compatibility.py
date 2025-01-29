@@ -63,6 +63,12 @@ class ProductCompatibility(CompatibilityMixin):
                     variant[key] = key_map[value]
         return variant
 
+    def _infer_inventory_management(self, inventory_item):
+        if inventory_item["tracked"]:
+            return "shopify"
+        else:
+            return None
+
     def _convert_variants(self):
         return [
             dict(
@@ -76,7 +82,7 @@ class ProductCompatibility(CompatibilityMixin):
                     "id": self._extract_int_id(variant["id"]),
                     "image_id": self._extract_int_id(variant["image"]["id"]) if variant.get("image") else None,
                     "inventory_item_id": self._extract_int_id(variant["inventoryItem"]["id"]),
-                    "inventory_management": None,  # No longer supported by GraphQL API
+                    "inventory_management": self._infer_inventory_management(variant["inventoryItem"]),
                     "inventory_policy": variant["inventoryPolicy"],
                     "inventory_quantity": variant["inventoryQuantity"],
                     "old_inventory_quantity": None,  # No longer supported by GraphQL API
