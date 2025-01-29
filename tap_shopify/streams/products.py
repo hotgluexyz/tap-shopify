@@ -67,6 +67,7 @@ class Products(Stream):
                             inventoryItem {
                                 id
                                 requiresShipping
+                                tracked
                             }
                             createdAt
                             barcode
