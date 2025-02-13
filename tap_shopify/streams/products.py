@@ -17,7 +17,7 @@ class Products(Stream):
 
     products_gql_query = """
         query GetProducts($query: String, $cursor: String) {
-            products(first: 250, after: $cursor, query: $query) {
+            products(first: 50, after: $cursor, query: $query) {
                 nodes {
                     status
                     publishedAt
@@ -77,6 +77,14 @@ class Products(Stream):
                             selectedOptions {
                                 name
                                 value
+                            }
+                            presentmentPrices (first: 30) {
+                                nodes {
+                                    price {
+                                        amount
+                                        currencyCode
+                                    }
+                                }
                             }
                         }
                     }
