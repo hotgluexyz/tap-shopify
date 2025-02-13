@@ -308,14 +308,11 @@
             "type": ["null", "array"],
             "items": {
               "properties": {
-                "type": "object",
-                "properties": {
-                  "amount": {
-                    "type": "number"
-                  },
-                  "currency_code": {
-                    "type": "string"
-                  }
+                "amount": {
+                  "type": "number"
+                },
+                "currency_code": {
+                  "type": "string"
                 }
               }
             }
