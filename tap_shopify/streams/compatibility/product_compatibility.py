@@ -68,6 +68,15 @@ class ProductCompatibility(CompatibilityMixin):
             return "shopify"
         else:
             return None
+    
+    def _cast_presentment_prices(self, presentment_prices):
+        return [
+            {
+                "price": presentment_price.get("price", {}).get("amount"),
+                "currency_code": presentment_price.get("price", {}).get("currencyCode"),
+            }
+            for presentment_price in presentment_prices
+        ]
 
     def _convert_variants(self):
         return [
@@ -96,6 +105,7 @@ class ProductCompatibility(CompatibilityMixin):
                     "updated_at": variant["updatedAt"],
                     "weight": variant["weight"],
                     "weight_unit": variant["weightUnit"],
+                    "presentment_prices": self._cast_presentment_prices(variant.get("presentmentPrices", {}).get("nodes", [])),
                 },
                 **self._extract_variant_options(variant),
             )
