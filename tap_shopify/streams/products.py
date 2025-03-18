@@ -17,7 +17,7 @@ class Products(Stream):
 
     products_gql_query = """
         query GetProducts($query: String, $cursor: String) {
-            products(first: 50, after: $cursor, query: $query) {
+            products(first: 20, after: $cursor, query: $query) {
                 nodes {
                     status
                     publishedAt
@@ -54,8 +54,6 @@ class Products(Stream):
                             position
                             price
                             compareAtPrice
-                            weight
-                            weightUnit
                             inventoryPolicy
                             inventoryQuantity
                             taxable
@@ -68,12 +66,25 @@ class Products(Stream):
                                 id
                                 requiresShipping
                                 tracked
+                                inventoryLevels(first: 1) {
+                                    nodes {
+                                        location {
+                                            fulfillmentService {
+                                                handle
+                                            }
+                                        }
+                                    }
+                                }
+                                measurement {
+                                    weight {
+                                        unit
+                                        value
+                                    }
+
+                                }
                             }
                             createdAt
                             barcode
-                            fulfillmentService {
-                                handle
-                            }
                             selectedOptions {
                                 name
                                 value
