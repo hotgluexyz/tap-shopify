@@ -41,14 +41,15 @@ def initialize_shopify_client():
     # Make GraphQL request to get shop details if not in config
     if not Context.config.get('shop_id'):
         load_shop_id(shop, api_key)
-    graphql_version = Context.config.get('graphql_api_version', '2024-04')
+    graphql_version = Context.config.get('graphql_api_version', '2024-07')
     graphql_session = shopify.Session(Context.config["shop_id"], graphql_version, api_key)
 
     # Shop.current() makes a call for shop details with provided shop and api_key
     return shopify.Shop.current().attributes, session, graphql_session
 
 def load_shop_id(shop, api_key):
-    graphql_url = f"https://{shop}.myshopify.com/admin/api/2024-04/graphql.json"
+    graphql_version = Context.config.get('graphql_api_version', '2024-07')
+    graphql_url = f"https://{shop}.myshopify.com/admin/api/{graphql_version}/graphql.json"
     headers = {
         "Accept": "application/json",
         "Content-Type": "application/json",

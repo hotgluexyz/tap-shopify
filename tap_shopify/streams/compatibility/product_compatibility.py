@@ -68,7 +68,7 @@ class ProductCompatibility(CompatibilityMixin):
             return "shopify"
         else:
             return None
-    
+
     def _cast_presentment_prices(self, presentment_prices):
         return [
             {
@@ -78,6 +78,15 @@ class ProductCompatibility(CompatibilityMixin):
             for presentment_price in presentment_prices
         ]
 
+    def _extract_fulfillment_service(self, inventory_item):
+        inventory_levels = inventory_item["inventoryLevels"].get("nodes", [])
+        if len(inventory_levels) <= 0:
+            return
+        fulfillment_service = inventory_levels[0]["location"]["fulfillmentService"]
+        if not fulfillment_service:
+            return
+        return fulfillment_service["handle"]
+
     def _convert_variants(self):
         return [
             dict(
@@ -86,8 +95,8 @@ class ProductCompatibility(CompatibilityMixin):
                     "barcode": variant["barcode"],
                     "compare_at_price": variant["compareAtPrice"],
                     "created_at": variant["createdAt"],
-                    "fulfillment_service": variant["fulfillmentService"]["handle"],
-                    "grams": None,  # No longer supported by GraphQL API
+                    "fulfillment_service": self._extract_fulfillment_service(variant["inventoryItem"]),
+                    "grams": None, # No longer supported by GraphQL API
                     "id": self._extract_int_id(variant["id"]),
                     "image_id": self._extract_int_id(variant["image"]["id"]) if variant.get("image") else None,
                     "inventory_item_id": self._extract_int_id(variant["inventoryItem"]["id"]),
@@ -103,8 +112,8 @@ class ProductCompatibility(CompatibilityMixin):
                     "taxable": variant["taxable"],
                     "title": variant["title"],
                     "updated_at": variant["updatedAt"],
-                    "weight": variant["weight"],
-                    "weight_unit": variant["weightUnit"],
+                    "weight": variant["inventoryItem"]["measurement"].get("weight", {}).get("value"),
+                    "weight_unit": variant["inventoryItem"]["measurement"].get("weight", {}).get("unit"),
                     "presentment_prices": self._cast_presentment_prices(variant.get("presentmentPrices", {}).get("nodes", [])),
                 },
                 **self._extract_variant_options(variant),
