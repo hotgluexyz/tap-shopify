@@ -15,7 +15,102 @@ class Products(Stream):
     name = 'products'
     replication_object = shopify.Product
 
+    def __init__(self):
+        super().__init__()
+        # read_locations is a new requirement as of GraphQL API v2024-07 to fetch the "fulfillment_service" key for a variant.
+        # This logic of fetching scopes is used to support existing tenants who may not have been granted the read_locations scope.
+        # If the read_locations scope is not granted, we will log a warning message, and continue the sync without pulling this field.
+        self.access_scopes = self.get_access_scopes()
+        if not self.has_access_scope('read_locations'):
+            LOGGER.warning("The `read_locations` access scope is not granted. The `fulfillment_service` field will not be available for product variants")
+
+    def has_access_scope(self, scope):
+        return self.access_scopes.get(scope, False)
+
     products_gql_query = """
+        query GetProducts($query: String, $cursor: String) {
+            products(first: 20, after: $cursor, query: $query) {
+                nodes {
+                    status
+                    publishedAt
+                    createdAt
+                    vendor
+                    updatedAt
+                    descriptionHtml
+                    productType
+                    tags
+                    handle
+                    templateSuffix
+                    title
+                    id
+                    options {
+                        id
+                        name
+                        position
+                        values
+                    }
+                    images(first: 250) {
+                        nodes {
+                            id
+                            altText
+                            src
+                            height
+                            width
+                        }
+                    }
+                    variants(first: 100) {
+                        nodes {
+                            id
+                            title
+                            sku
+                            position
+                            price
+                            compareAtPrice
+                            inventoryPolicy
+                            inventoryQuantity
+                            taxable
+                            taxCode
+                            updatedAt
+                            image {
+                                id
+                            }
+                            inventoryItem {
+                                id
+                                requiresShipping
+                                tracked
+                                measurement {
+                                    weight {
+                                        unit
+                                        value
+                                    }
+                                }
+                            }
+                            createdAt
+                            barcode
+                            selectedOptions {
+                                name
+                                value
+                            }
+                            presentmentPrices (first: 30) {
+                                nodes {
+                                    price {
+                                        amount
+                                        currencyCode
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                pageInfo {
+                    hasNextPage
+                    endCursor
+                }
+            }
+        }
+    """
+
+    products_gql_query_with_fulfillment_service = """
         query GetProducts($query: String, $cursor: String) {
             products(first: 20, after: $cursor, query: $query) {
                 nodes {
@@ -80,7 +175,6 @@ class Products(Stream):
                                         unit
                                         value
                                     }
-
                                 }
                             }
                             createdAt
@@ -186,10 +280,25 @@ class Products(Stream):
         }
     """
 
+    access_scopes_query = """
+        query CheckAppAccessScopes {
+        appInstallation {
+            accessScopes {
+            handle
+            }
+        }
+        }
+    """
+
     @shopify_error_handling
     def _call_api(self, query, variables):
         """
         Generalized method for making API calls with a GraphQL client.
+
+        Args:
+            query: The GraphQL query to execute
+            variables: Variables to pass to the query
+            error_handler: Optional function to handle errors (defaults to self._handle_error)
         """
         shopify.ShopifyResource.activate_session(Context.shopify_graphql_session)
         gql_client = shopify.GraphQL()
@@ -197,8 +306,16 @@ class Products(Stream):
         result = json.loads(response)
         shopify.ShopifyResource.activate_session(Context.shopify_rest_session)
         if result.get("errors"):
-            raise Exception(result['errors'])
+            error_handler = error_handler or self._handle_error
+            error_handler(result['errors'])
         return result
+
+    def get_access_scopes(self):
+        response = self._call_api(self.access_scopes_query, {})
+        scope_dict = {}
+        for scope in response['data']['appInstallation']['accessScopes']:
+            scope_dict[scope['handle']] = True
+        return scope_dict
 
     def get_products_metafields(self, updated_at_min, updated_at_max, cursor=None, metafields_cursor=None):
         query = f"updated_at:>'{updated_at_min.isoformat()}' AND updated_at:<'{updated_at_max.isoformat()}'"
@@ -230,7 +347,10 @@ class Products(Stream):
             "query": query,
             "cursor": cursor
         }
-        return self._call_api(self.products_gql_query, variables)
+        if self.has_access_scope('read_locations'):
+            return self._call_api(self.products_gql_query_with_fulfillment_service, variables)
+        else:
+            return self._call_api(self.products_gql_query, variables)
 
     def paginate(self, fetch_page, updated_at_min, updated_at_max, process_item, item_type):
         """

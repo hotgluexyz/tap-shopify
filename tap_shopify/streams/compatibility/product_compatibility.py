@@ -79,7 +79,7 @@ class ProductCompatibility(CompatibilityMixin):
         ]
 
     def _extract_fulfillment_service(self, inventory_item):
-        inventory_levels = inventory_item["inventoryLevels"].get("nodes", [])
+        inventory_levels = inventory_item.get("inventoryLevels", {}).get("nodes", [])
         if len(inventory_levels) <= 0:
             return
         fulfillment_service = inventory_levels[0]["location"]["fulfillmentService"]
