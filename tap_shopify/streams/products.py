@@ -298,7 +298,6 @@ class Products(Stream):
         Args:
             query: The GraphQL query to execute
             variables: Variables to pass to the query
-            error_handler: Optional function to handle errors (defaults to self._handle_error)
         """
         shopify.ShopifyResource.activate_session(Context.shopify_graphql_session)
         gql_client = shopify.GraphQL()
@@ -306,8 +305,7 @@ class Products(Stream):
         result = json.loads(response)
         shopify.ShopifyResource.activate_session(Context.shopify_rest_session)
         if result.get("errors"):
-            error_handler = error_handler or self._handle_error
-            error_handler(result['errors'])
+            raise Exception(result['errors'])
         return result
 
     def get_access_scopes(self):
