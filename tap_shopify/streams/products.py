@@ -15,18 +15,6 @@ class Products(Stream):
     name = 'products'
     replication_object = shopify.Product
 
-    def __init__(self):
-        super().__init__()
-        # read_locations is a new requirement as of GraphQL API v2024-07 to fetch the "fulfillment_service" key for a variant.
-        # This logic of fetching scopes is used to support existing tenants who may not have been granted the read_locations scope.
-        # If the read_locations scope is not granted, we will log a warning message, and continue the sync without pulling this field.
-        self.access_scopes = self.get_access_scopes()
-        if not self.has_access_scope('read_locations'):
-            LOGGER.warning("The `read_locations` access scope is not granted. The `fulfillment_service` field will not be available for product variants")
-
-    def has_access_scope(self, scope):
-        return self.access_scopes.get(scope, False)
-
     products_gql_query = """
         query GetProducts($query: String, $cursor: String) {
             products(first: 20, after: $cursor, query: $query) {
@@ -445,6 +433,13 @@ class Products(Stream):
             self.update_bookmark(strftime(updated_at_min))
 
     def get_objects(self):
+        # read_locations is a new requirement as of GraphQL API v2024-07 to fetch the "fulfillment_service" key for a variant.
+        # This logic of fetching scopes is used to support existing tenants who may not have been granted the read_locations scope.
+        # If the read_locations scope is not granted, we will log a warning message, and continue the sync without pulling this field.
+        self.access_scopes = self.get_access_scopes()
+        if not self.has_access_scope('read_locations'):
+            LOGGER.warning("The `read_locations` access scope is not granted. The `fulfillment_service` field will not be available for product variants")
+
         def process_product(product):
             yield ProductCompatibility(product)
 
@@ -464,5 +459,8 @@ class Products(Stream):
             )
             updated_at_min = updated_at_max
             self.update_bookmark(strftime(updated_at_min))
+
+    def has_access_scope(self, scope):
+        return self.access_scopes.get(scope, False)
 
 Context.stream_objects['products'] = Products
