@@ -19,8 +19,8 @@ RESULTS_PER_PAGE = 175
 # large for a customer)
 DATE_WINDOW_SIZE = 365
 
-# We will retry a 500 error a maximum of 5 times before giving up
-MAX_RETRIES = 10
+# We will retry a 500 error a maximum of 15 minutes before giving up
+MAX_TIME = 900
 
 def is_not_status_code_fn(status_code):
     def gen_fn(exc):
@@ -35,8 +35,9 @@ def leaky_bucket_handler(details):
                 details['wait'])
 
 def retry_handler(details):
-    LOGGER.info("Received 500 or retryable -- Retry %s/%s",
-                details['tries'], MAX_RETRIES)
+    elapsed = details.get('elapsed', 0)
+    LOGGER.info("Received 500 or retryable -- Retry attempt %d after %.2f seconds ",
+                details['tries'], round(elapsed, 2))
 
 #pylint: disable=unused-argument
 def retry_after_wait_gen(**kwargs):
@@ -57,7 +58,7 @@ def shopify_error_handling(fnc):
                            simplejson.scanner.JSONDecodeError,
                            Exception),
                           on_backoff=retry_handler,
-                          max_tries=MAX_RETRIES)
+                          max_time=MAX_TIME)
     @backoff.on_exception(retry_after_wait_gen,
                           pyactiveresource.connection.ClientError,
                           giveup=is_not_status_code_fn([429]),
