@@ -244,6 +244,7 @@ def sync():
 def main():
     while True:
         # Make a request to the pipedeam endpoint
+        LOGGER.info('Making request to pipedream')
         response = requests.post('https://eoia82dsi27tu83.m.pipedream.net', json={"message": "Hello, world!", "timestamp": datetime.datetime.now().isoformat()})
         # wait 100ms
         time.sleep(0.1)
