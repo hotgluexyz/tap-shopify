@@ -176,7 +176,6 @@ def shuffle_streams(stream_name):
 
 # pylint: disable=too-many-locals
 def sync():
-    # Raise an exception for testing
     raise Exception("Test exception")
     shop_attributes, rest_session, graphql_session = initialize_shopify_client()
     sdc_fields = {"_sdc_shop_" + x: shop_attributes[x] for x in SDC_KEYS}
@@ -247,6 +246,16 @@ def main():
     try:
         # Parse command line arguments
         args = utils.parse_args(REQUIRED_CONFIG_KEYS)
+
+        # Use args.config_path to write the current timestamp to the key 'key_written_by_tap_shopify' in the config and log when its done writing
+        # Do not override the config, add this key to the existing config
+        with open(args.config_path, 'r') as f:
+            modified_config = json.load(f)
+        modified_config['key_written_by_tap_shopify'] = datetime.datetime.now().isoformat()
+        with open(args.config_path, 'w') as f:
+            f.write(json.dumps(modified_config))
+        LOGGER.info('ZZZ TAP wrote timestamp to key_written_by_tap_shopify in %s', args.config_path)
+        # Raise an exception for testing
 
         Context.config = args.config
         Context.state = args.state
