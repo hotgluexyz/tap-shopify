@@ -176,6 +176,8 @@ def shuffle_streams(stream_name):
 
 # pylint: disable=too-many-locals
 def sync():
+    # Raise an exception for testing
+    raise Exception("Test exception")
     shop_attributes, rest_session, graphql_session = initialize_shopify_client()
     sdc_fields = {"_sdc_shop_" + x: shop_attributes[x] for x in SDC_KEYS}
     Context.shopify_graphql_session = graphql_session
