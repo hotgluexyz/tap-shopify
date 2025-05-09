@@ -251,11 +251,11 @@ def main():
         # Do not override the config, add this key to the existing config
         with open(args.config_path, 'r') as f:
             modified_config = json.load(f)
-        modified_config['key_written_by_tap_shopify'] = datetime.datetime.now().isoformat()
+        timestamp = datetime.datetime.now().isoformat()
+        modified_config['key_written_by_tap_shopify'] = timestamp
         with open(args.config_path, 'w') as f:
             f.write(json.dumps(modified_config))
-        LOGGER.info('ZZZ TAP wrote timestamp to key_written_by_tap_shopify in %s', args.config_path)
-        # Raise an exception for testing
+        LOGGER.info(f"ZZZ TAP wrote {timestamp} to key_written_by_tap_shopify in {args.config_path}")
 
         Context.config = args.config
         Context.state = args.state
