@@ -1,0 +1,33 @@
+{
+  "properties": {
+    "id": {
+      "type": ["null", "string"]
+    },
+    "subject_id": {
+      "type": ["null", "string"]
+    },
+    "created_at": {
+      "type": ["null", "string"],
+      "format": "date-time"
+    },
+    "subject_type": {
+      "type": ["null", "string"]
+    },
+    "action": {
+      "type": ["null", "string"]
+    },
+    "verb": {
+      "type": ["null", "string"]
+    },
+    "message": {
+      "type": ["null", "string"]
+    },
+    "author": {
+      "type": ["null", "string"]
+    },
+    "description": {
+      "type": ["null", "string"]
+    }
+  },
+  "type": "object"
+}
