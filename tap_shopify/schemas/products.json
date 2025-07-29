@@ -315,13 +315,8 @@
                     "currency_code":  { "type": ["null", "string"] }
                   }
                 },
-                "price": {                  
-                  "type": ["null", "object"],
-                  "properties": {
-                    "amount":         { "type": ["null", "number"] },
-                    "currency_code":  { "type": ["null", "string"] }
-                  }
-                }
+                "amount":         { "type": ["null", "number"] },
+                "currency_code":  { "type": ["null", "string"] }
               }
             }
           }
