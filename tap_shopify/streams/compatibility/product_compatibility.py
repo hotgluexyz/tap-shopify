@@ -72,7 +72,7 @@ class ProductCompatibility(CompatibilityMixin):
     def _cast_presentment_prices(self, presentment_prices):
         return [
             {
-                "amount": float((p.get("price") or {}).get("amount")) if (p.get("price") or {}).get("amount") else None,
+                "price": float((p.get("price") or {}).get("amount")) if (p.get("price") or {}).get("amount") else None,
                 "currency_code": (p.get("price") or {}).get("currencyCode"),
                 "compare_at_price": {
                     "amount": float((p.get("compareAtPrice") or {}).get("amount")) if (p.get("compareAtPrice") or {}).get("amount") else None,

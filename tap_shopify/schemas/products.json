@@ -315,7 +315,7 @@
                     "currency_code":  { "type": ["null", "string"] }
                   }
                 },
-                "amount":         { "type": ["null", "number"] },
+                "price":         { "type": ["null", "number"] },
                 "currency_code":  { "type": ["null", "string"] }
               }
             }
