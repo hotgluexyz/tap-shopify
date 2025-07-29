@@ -70,10 +70,20 @@ class ProductCompatibility(CompatibilityMixin):
             return None
 
     def _cast_presentment_prices(self, presentment_prices):
+        if not presentment_prices:
+             return []
+         
+        def _money(node):
+            node = node or {}
+            return {
+                "amount":        float(node["amount"]) if node.get("amount") else None,
+                "currency_code": node.get("currencyCode"),
+            }
+        
         return [
             {
-                "price": presentment_price.get("price", {}).get("amount"),
-                "currency_code": presentment_price.get("price", {}).get("currencyCode"),
+                "price": _money(presentment_price.get("price")),
+                "compare_at_price": _money(presentment_price.get("compareAtPrice"))
             }
             for presentment_price in presentment_prices
         ]

@@ -308,11 +308,19 @@
             "type": ["null", "array"],
             "items": {
               "properties": {
-                "amount": {
-                  "type": "number"
+                "compare_at_price": {
+                  "type": ["null", "object"],
+                  "properties": {
+                    "amount":         { "type": ["null", "number"] },
+                    "currency_code":  { "type": ["null", "string"] }
+                  }
                 },
-                "currency_code": {
-                  "type": "string"
+                "price": {                  
+                  "type": ["null", "object"],
+                  "properties": {
+                    "amount":         { "type": ["null", "number"] },
+                    "currency_code":  { "type": ["null", "string"] }
+                  }
                 }
               }
             }

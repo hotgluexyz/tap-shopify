@@ -81,6 +81,10 @@ class Products(Stream):
                             }
                             presentmentPrices (first: 30) {
                                 nodes {
+                                    compareAtPrice {
+                                        amount
+                                        currencyCode
+                                    }
                                     price {
                                         amount
                                         currencyCode
@@ -173,6 +177,10 @@ class Products(Stream):
                             }
                             presentmentPrices (first: 30) {
                                 nodes {
+                                    compareAtPrice {
+                                        amount
+                                        currencyCode
+                                    }
                                     price {
                                         amount
                                         currencyCode
