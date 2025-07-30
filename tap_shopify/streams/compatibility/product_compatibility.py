@@ -70,14 +70,21 @@ class ProductCompatibility(CompatibilityMixin):
             return None
 
     def _cast_presentment_prices(self, presentment_prices):
-        return [
-            {
-                "price": presentment_price.get("price", {}).get("amount"),
-                "currency_code": presentment_price.get("price", {}).get("currencyCode"),
-            }
-            for presentment_price in presentment_prices
-        ]
-
+        result = []
+        for p in presentment_prices or []:
+            price_amount = (p.get("price") or {}).get("amount")
+            compare_at_amount = (p.get("compareAtPrice") or {}).get("amount")
+            
+            result.append({
+                "price": float(price_amount) if price_amount else None,
+                "currency_code": (p.get("price") or {}).get("currencyCode"),
+                "compare_at_price": {
+                    "amount": float(compare_at_amount) if compare_at_amount else None,
+                    "currency_code": (p.get("compareAtPrice") or {}).get("currencyCode"),
+                },
+            })
+        return result
+    
     def _extract_fulfillment_service(self, inventory_item):
         inventory_levels = inventory_item.get("inventoryLevels", {}).get("nodes", [])
         if len(inventory_levels) <= 0:
