@@ -341,7 +341,7 @@ class Products(Stream):
             "query": query,
             "cursor": cursor
         }
-        if self.has_access_scope('locations'):
+        if self.has_access_scope('read_locations'):
             return self._call_api(self.products_gql_query_with_fulfillment_service, variables)
         else:
             return self._call_api(self.products_gql_query, variables)
@@ -441,13 +441,12 @@ class Products(Stream):
             self.update_bookmark(strftime(updated_at_min))
 
     def get_objects(self):
-        '''
-        As of the 2024-10 release of the Admin REST API, the location resource will be gated by the locations scope. Attempting to access the location resource without the
-        'read _locations' scope will return a 403 Forbidden error.
-        '''
+        # read_locations is a new requirement as of GraphQL API v2024-07 to fetch the "fulfillment_service" key for a variant.
+        # This logic of fetching scopes is used to support existing tenants who may not have been granted the read_locations scope.
+        # If the read_locations scope is not granted, we will log a warning message, and continue the sync without pulling this field.
         self.access_scopes = self.get_access_scopes()
-        if not self.has_access_scope('locations'):
-            LOGGER.warning("The `locations` access scope is not granted. The `fulfillment_service` field will not be available for product variants")
+        if not self.has_access_scope('read_locations'):
+            LOGGER.warning("The `read_locations` access scope is not granted. The `fulfillment_service` field will not be available for product variants")
 
         def process_product(product):
             yield ProductCompatibility(product)
