@@ -22,7 +22,6 @@
         "PRODUCTVARIANT": "productvariant",
         "SHOP": "shop",
         "VALIDATION": "validation",
-        "MEDIA_IMAGE": "media_image",
-        "PRODUCTIMAGE": "productimage"
+        "MEDIA_IMAGE": "media_image"
     }
 }

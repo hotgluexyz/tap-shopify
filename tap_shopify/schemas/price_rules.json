@@ -3,7 +3,8 @@
     "id": {
       "type": [
         "null",
-        "integer"
+        "integer",
+        "string"
       ]
     },
     "value_type": {
