@@ -28,6 +28,16 @@ class PriceRules(Stream):
                   createdAt
                   updatedAt
                   usageLimit
+                  appliesOncePerCustomer
+                }
+                ... on DiscountCodeBasic {
+                  title
+                  status
+                  startsAt
+                  endsAt
+                  createdAt
+                  updatedAt
+                  usageLimit
                 }
                 ... on DiscountAutomaticApp {
                   title
@@ -37,7 +47,25 @@ class PriceRules(Stream):
                   createdAt
                   updatedAt
                 }
+                ... on DiscountAutomaticBasic {
+                  title
+                  status
+                  startsAt
+                  endsAt
+                  createdAt
+                  updatedAt
+                }
                 ... on DiscountCodeBxgy {
+                  title
+                  status
+                  startsAt
+                  endsAt
+                  createdAt
+                  updatedAt
+                  usesPerOrderLimit
+                  appliesOncePerCustomer
+                }
+                ... on DiscountAutomaticBxgy {
                   title
                   status
                   startsAt
@@ -54,6 +82,15 @@ class PriceRules(Stream):
                   createdAt
                   updatedAt
                   usageLimit
+                  appliesOncePerCustomer
+                }
+                ... on DiscountAutomaticFreeShipping {
+                  title
+                  status
+                  startsAt
+                  endsAt
+                  createdAt
+                  updatedAt
                 }
               }
             }
@@ -78,42 +115,75 @@ class PriceRules(Stream):
 
     def _map_discount_node_to_record(self, node):
         discount = node.get('discount') or {}
+        typename = discount.get('__typename')
+        admin_gid = node.get('id')
+        # Derive numeric id from GID if possible
+        numeric_id = None
+        if isinstance(admin_gid, str):
+            last = admin_gid.rsplit('/', 1)[-1]
+            if last.isdigit():
+                try:
+                    numeric_id = int(last)
+                except Exception:
+                    numeric_id = None
+
         # Prefer updatedAt if present for replication
         updated_at = discount.get('updatedAt') or discount.get('endsAt') or discount.get('startsAt') or discount.get('createdAt')
+
+        # Start with legacy-shaped record including requested defaults where not inferable
         record = {
-            # Keep GraphQL ID; schema updated to accept string IDs
-            'id': node.get('id'),
+            'id': numeric_id if numeric_id is not None else admin_gid,
             'title': discount.get('title'),
             'created_at': discount.get('createdAt'),
             'updated_at': updated_at,
             'starts_at': discount.get('startsAt'),
             'ends_at': discount.get('endsAt'),
-            'usage_limit': discount.get('usageLimit') or discount.get('usesPerOrderLimit'),
-            # Fields below are REST PriceRule-specific; leave as None
-            'value_type': None,
-            'value': None,
-            'customer_selection': None,
-            'target_type': None,
-            'target_selection': None,
-            'allocation_method': None,
+            'usage_limit': discount.get('usageLimit') or discount.get('usesPerOrderLimit') or None,
+            'customer_selection': 'all',
+            'target_selection': 'all',
+            'allocation_method': 'each',
             'allocation_limit': None,
-            'once_per_customer': None,
-            'entitled_collection_ids': None,
-            'entitled_country_ids': None,
-            'entitled_product_ids': None,
-            'entitled_variant_ids': None,
-            'prerequisite_customer_ids': None,
+            'once_per_customer': bool(discount.get('appliesOncePerCustomer')) if discount.get('appliesOncePerCustomer') is not None else False,
+            'entitled_product_ids': [],
+            'entitled_variant_ids': [],
+            'entitled_collection_ids': [],
+            'entitled_country_ids': [],
+            'prerequisite_customer_ids': [],
             'prerequisite_quantity_range': None,
-            'prerequisite_saved_search_ids': None,
             'prerequisite_shipping_price_range': None,
-            'prerequisite_subtotal_range': None,
-            'prerequisite_to_entitlement_purchase': None,
-            'prerequisite_product_ids': None,
-            'prerequisite_variant_ids': None,
-            'prerequisite_collection_ids': None,
-            'prerequisite_to_entitlement_quantity_ratio': None,
         }
-        return {k: v for k, v in record.items() if v is not None}
+        # Conditionally include usage_limit if present
+        usage_limit = discount.get('usageLimit') or discount.get('usesPerOrderLimit')
+        if usage_limit is not None:
+            record['usage_limit'] = usage_limit
+        # Only infer additional fields we can know from the current selection
+        if typename in ('DiscountCodeFreeShipping', 'DiscountAutomaticFreeShipping'):
+            record['value_type'] = 'percentage'
+            record['value'] = '-100.0'
+            record['target_type'] = 'shipping_line'
+
+        # Infer basic/line-item discounts (percentage only if available)
+        if typename in ('DiscountCodeBasic', 'DiscountAutomaticBasic'):
+            record['target_type'] = 'line_item'
+            # 2024-10 public schema doesn’t expose nested value breakdown reliably; skip unless present
+            cg = (discount.get('customerGets') or {}).get('value') if isinstance(discount.get('customerGets'), dict) else None
+            if isinstance(cg, dict) and cg.get('percentage') is not None:
+                record['value_type'] = 'percentage'
+                record['value'] = f"-{float(cg.get('percentage'))}"
+
+        # Infer BxGy as a 100% off of Y items to keep parity
+        if typename in ('DiscountCodeBxgy', 'DiscountAutomaticBxgy'):
+            record['value_type'] = 'percentage'
+            record['value'] = '-100.0'
+            record['target_type'] = 'line_item'
+
+        # once_per_customer for code-based types when available
+        if typename in ('DiscountCodeApp', 'DiscountCodeBxgy', 'DiscountCodeFreeShipping') and discount.get('appliesOncePerCustomer') is not None:
+            record['once_per_customer'] = discount.get('appliesOncePerCustomer')
+
+        # Skip entitlements/minimums — public 2024-10 schema in this shop doesn't expose those types
+
+        return record
 
     def get_objects(self):
         # We paginate through all discount nodes and filter by bookmark
