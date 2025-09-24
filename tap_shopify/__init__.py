@@ -34,21 +34,21 @@ def initialize_shopify_client():
     if '.' in Context.config['shop']:
         Context.config['shop'] = Context.config['shop'].split('.')[0]
     shop = Context.config['shop']
-    version = Context.config.get('api_version', '2024-01')
+    version = Context.config.get('api_version', '2024-10')
     session = shopify.Session(shop, version, api_key)
     shopify.ShopifyResource.activate_session(session)
 
     # Make GraphQL request to get shop details if not in config
     if not Context.config.get('shop_id'):
         load_shop_id(shop, api_key)
-    graphql_version = Context.config.get('graphql_api_version', '2024-07')
+    graphql_version = Context.config.get('graphql_api_version', '2024-10')
     graphql_session = shopify.Session(Context.config["shop_id"], graphql_version, api_key)
 
     # Shop.current() makes a call for shop details with provided shop and api_key
     return shopify.Shop.current().attributes, session, graphql_session
 
 def load_shop_id(shop, api_key):
-    graphql_version = Context.config.get('graphql_api_version', '2024-07')
+    graphql_version = Context.config.get('graphql_api_version', '2024-10')
     graphql_url = f"https://{shop}.myshopify.com/admin/api/{graphql_version}/graphql.json"
     headers = {
         "Accept": "application/json",
