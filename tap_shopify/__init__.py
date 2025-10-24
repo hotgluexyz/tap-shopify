@@ -267,12 +267,12 @@ def main():
     except pyactiveresource.connection.UnauthorizedAccess as exc:
         raise ShopifyError(exc, 'Invalid access token - Re-authorize the connection') \
             from exc
-    except pyactiveresource.connection.ConnectionError as exc:
+    except (pyactiveresource.connection.ConnectionError, pyactiveresource.connection.ForbiddenAccess) as exc:
         msg = ''
         try:
             body_json = exc.response.body.decode()
             body = json.loads(body_json)
-            msg = body.get('errors')
+            msg = body.get('errors', body.get('error'))
         finally:
             raise ShopifyError(exc, msg) from exc
     except Exception as exc:
