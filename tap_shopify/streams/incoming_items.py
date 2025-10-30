@@ -7,6 +7,7 @@ from singer.utils import strftime, strptime_to_utc
 from tap_shopify.context import Context
 from tap_shopify.streams.base import (Stream,
                                       shopify_error_handling)
+from tap_shopify.graph_ql import GraphQL
 
 LOGGER = singer.get_logger()
 
@@ -29,7 +30,7 @@ class IncomingItems(Stream):
     @shopify_error_handling
     def call_api_for_incoming_items(self, parent_object):
         shopify.ShopifyResource.activate_session(Context.shopify_graphql_session)
-        gql_client = shopify.GraphQL()
+        gql_client = GraphQL()
         with HiddenPrints():
             response = gql_client.execute(self.gql_query, dict(id=parent_object.admin_graphql_api_id))
         res = json.loads(response)

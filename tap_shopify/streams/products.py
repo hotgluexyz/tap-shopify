@@ -8,6 +8,7 @@ from singer.utils import strftime
 from tap_shopify.streams.compatibility.product_compatibility import ProductCompatibility
 from tap_shopify.streams.compatibility.metafield_compatibility import MetafieldCompatibility
 from tap_shopify.streams.compatibility.product_category_compatibility import ProductCategoryCompatibility
+from tap_shopify.graph_ql import GraphQL
 
 LOGGER = singer.get_logger()
 
@@ -296,7 +297,7 @@ class Products(Stream):
             variables: Variables to pass to the query
         """
         shopify.ShopifyResource.activate_session(Context.shopify_graphql_session)
-        gql_client = shopify.GraphQL()
+        gql_client = GraphQL()
         response = gql_client.execute(query, variables)
         result = json.loads(response)
         shopify.ShopifyResource.activate_session(Context.shopify_rest_session)
