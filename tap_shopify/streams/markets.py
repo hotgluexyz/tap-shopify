@@ -9,6 +9,7 @@ import json
 from singer.utils import strftime
 from tap_shopify.context import Context
 from tap_shopify.streams.base import (Stream,shopify_error_handling)
+from tap_shopify.graph_ql import GraphQL
 
 LOGGER = singer.get_logger()
 
@@ -31,7 +32,7 @@ class Markets(Stream):
     gql_query = "query tapShopify($first: Int, $after: String) { markets(first: $first, after: $after) { edges { cursor node { currencySettings { baseCurrency { currencyCode currencyName enabled rateUpdatedAt } localCurrencies } enabled handle id name primary regions(first: 250) { edges { node { id name } } } webPresence { alternateLocales {locale marketWebPresences { id } name primary published } defaultLocale { locale marketWebPresences { id } name primary published } id rootUrls { locale url } subfolderSuffix } } }, pageInfo { hasNextPage } } }"
     @shopify_error_handling
     def call_api_for_incoming_items(self):
-        gql_client = shopify.GraphQL()
+        gql_client = GraphQL()
         with HiddenPrints():
             response = gql_client.execute(self.gql_query, dict(first=self.results_per_page))
         return json.loads(response)
@@ -51,7 +52,7 @@ class Markets(Stream):
         """
         
         # Make API call
-        gql_client = shopify.GraphQL()
+        gql_client = GraphQL()
         with HiddenPrints():
             response = gql_client.execute(region_query, {'ids': market_region_countries_ids})
         
