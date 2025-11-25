@@ -55,8 +55,7 @@ def shopify_error_handling(fnc):
     @backoff.on_exception(backoff.expo,
                           (pyactiveresource.connection.ServerError,
                            pyactiveresource.formats.Error,
-                           simplejson.scanner.JSONDecodeError,
-                           Exception),
+                           simplejson.scanner.JSONDecodeError),
                           on_backoff=retry_handler,
                           max_time=MAX_TIME)
     @backoff.on_exception(retry_after_wait_gen,
