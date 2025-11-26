@@ -36,8 +36,49 @@ def leaky_bucket_handler(details):
 
 def retry_handler(details):
     elapsed = details.get('elapsed', 0)
-    LOGGER.info("Received 500 or retryable -- Retry attempt %d after %.2f seconds ",
-                details['tries'], round(elapsed, 2))
+    exc_info = sys.exc_info()
+    exc = exc_info[1] if exc_info[1] else None
+    
+    error_msg = "Retryable error"
+    if exc:
+        error_type = exc.__class__.__name__
+        
+        # Try to get HTTP status code if it's a connection error
+        status_code = None
+        if hasattr(exc, 'code'):
+            status_code = exc.code
+        elif hasattr(exc, 'response') and hasattr(exc.response, 'code'):
+            status_code = exc.response.code
+        
+        # Try to extract response body error message
+        body_error = None
+        if hasattr(exc, 'response') and hasattr(exc.response, 'body'):
+            try:
+                body = exc.response.body
+                # Decode if it's bytes
+                if isinstance(body, bytes):
+                    body_str = body.decode('utf-8')
+                else:
+                    body_str = str(body)
+                
+                # Try to parse as JSON
+                try:
+                    body_json = simplejson.loads(body_str)
+                    # Extract error message from common JSON error formats
+                    if isinstance(body_json, dict):
+                        body_error = body_json.get('error') or body_json.get('errors') or body_json.get('message')
+                        if isinstance(body_error, list):
+                            body_error = ', '.join(str(e) for e in body_error)
+                except (simplejson.JSONDecodeError, ValueError):
+                    body_error = body_str
+            except (AttributeError, UnicodeDecodeError):
+                pass
+        
+        # Build error message
+        error_msg = f"{error_type} (HTTP {status_code}): {body_error}"
+    
+    LOGGER.info("%s -- Retry attempt %d after %.2f seconds",
+                error_msg, details['tries'], round(elapsed, 2))
 
 #pylint: disable=unused-argument
 def retry_after_wait_gen(**kwargs):
@@ -55,8 +96,7 @@ def shopify_error_handling(fnc):
     @backoff.on_exception(backoff.expo,
                           (pyactiveresource.connection.ServerError,
                            pyactiveresource.formats.Error,
-                           simplejson.scanner.JSONDecodeError,
-                           Exception),
+                           simplejson.scanner.JSONDecodeError),
                           on_backoff=retry_handler,
                           max_time=MAX_TIME)
     @backoff.on_exception(retry_after_wait_gen,
