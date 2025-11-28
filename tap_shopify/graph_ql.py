@@ -2,6 +2,8 @@ import shopify
 from six.moves import urllib
 import json
 
+from tap_shopify.exceptions import RetryableAPIError
+
 
 class GraphQL:
     def __init__(self):
@@ -26,4 +28,7 @@ class GraphQL:
             response = urllib.request.urlopen(req)
             return response.read().decode("utf-8")
         except urllib.error.HTTPError as e:
+            if e.status >= 500:
+                raise RetryableAPIError(e)
             raise e
+
