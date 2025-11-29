@@ -3,7 +3,8 @@ from six.moves import urllib
 import json
 
 from tap_shopify.exceptions import RetryableAPIError
-
+import singer
+LOGGER = singer.get_logger()
 
 class GraphQL:
     def __init__(self):
@@ -28,7 +29,8 @@ class GraphQL:
             response = urllib.request.urlopen(req)
             return response.read().decode("utf-8")
         except urllib.error.HTTPError as e:
-            if e.status >= 500:
+            if e.status not in [400, 403]:
+                LOGGER.info("Received %s -- backing off", e.status)
                 raise RetryableAPIError(e)
             raise e
 
