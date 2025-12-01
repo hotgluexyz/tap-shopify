@@ -29,7 +29,7 @@ class GraphQL:
             response = urllib.request.urlopen(req)
             return response.read().decode("utf-8")
         except urllib.error.HTTPError as e:
-            if e.status not in [400, 403]:
+            if e.status >= 500 or e.status in [429]:
                 LOGGER.info("Received %s -- backing off", e.status)
                 raise RetryableAPIError(e)
             raise e
