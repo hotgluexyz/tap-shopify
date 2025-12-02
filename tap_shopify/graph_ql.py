@@ -1,8 +1,8 @@
 import shopify
 from six.moves import urllib
 import json
-
 from tap_shopify.exceptions import RetryableAPIError
+
 import singer
 LOGGER = singer.get_logger()
 
@@ -32,5 +32,8 @@ class GraphQL:
             if e.status >= 500 or e.status in [429]:
                 LOGGER.info("Received %s -- backing off", e.status)
                 raise RetryableAPIError(e)
-            raise e
+            raise e from e
+        except urllib.error.URLError as e:
+            raise RetryableAPIError(e)
+
 
