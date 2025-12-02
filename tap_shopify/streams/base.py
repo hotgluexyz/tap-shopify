@@ -10,6 +10,8 @@ import simplejson
 import singer
 from singer import metrics, utils
 from tap_shopify.context import Context
+from tap_shopify.exceptions import RetryableAPIError
+from requests.exceptions import ConnectionError
 
 LOGGER = singer.get_logger()
 
@@ -96,7 +98,9 @@ def shopify_error_handling(fnc):
     @backoff.on_exception(backoff.expo,
                           (pyactiveresource.connection.ServerError,
                            pyactiveresource.formats.Error,
-                           simplejson.scanner.JSONDecodeError),
+                           simplejson.scanner.JSONDecodeError,
+                           ConnectionError,
+                           RetryableAPIError),
                           on_backoff=retry_handler,
                           max_time=MAX_TIME)
     @backoff.on_exception(retry_after_wait_gen,
