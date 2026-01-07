@@ -1,9 +1,7 @@
-from http.client import RemoteDisconnected
 import shopify
 from six.moves import urllib
 import json
 from tap_shopify.exceptions import RetryableAPIError
-import random
 
 import singer
 LOGGER = singer.get_logger()
