@@ -1,7 +1,9 @@
+from http.client import RemoteDisconnected
 import shopify
 from six.moves import urllib
 import json
 from tap_shopify.exceptions import RetryableAPIError
+import random
 
 import singer
 LOGGER = singer.get_logger()
@@ -34,6 +36,8 @@ class GraphQL:
                 raise RetryableAPIError(e)
             raise e from e
         except urllib.error.URLError as e:
+            raise RetryableAPIError(e)
+        except ConnectionResetError as e:
             raise RetryableAPIError(e)
 
 
