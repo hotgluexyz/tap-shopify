@@ -35,5 +35,7 @@ class GraphQL:
             raise e from e
         except urllib.error.URLError as e:
             raise RetryableAPIError(e)
+        except ConnectionResetError as e:
+            raise RetryableAPIError(e)
 
 
