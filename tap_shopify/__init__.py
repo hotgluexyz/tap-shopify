@@ -34,7 +34,7 @@ def initialize_shopify_client():
         Context.config['shop'] = Context.config['shop'].split('.')[0]
     shop = Context.config['shop']
 
-    if api_key is None and Context.config.get('client_id') and Context.config.get('client_secret'):
+    if Context.config.get('access_token') is None and Context.config.get('client_id') and Context.config.get('client_secret'):
         client_id = Context.config.get('client_id')
         client_secret = Context.config.get('client_secret')
 
