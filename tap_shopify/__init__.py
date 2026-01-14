@@ -28,12 +28,34 @@ logging.getLogger('backoff').setLevel(logging.CRITICAL)
 @shopify_error_handling
 def initialize_shopify_client():
     api_key = Context.config.get('access_token') or Context.config.get('api_key')
-    if api_key is None:
-        raise ValueError("No 'access_token' or 'api_key' provided in the config file.")
+
     # Remove .myshopify.com if present in shop name
     if '.' in Context.config['shop']:
         Context.config['shop'] = Context.config['shop'].split('.')[0]
     shop = Context.config['shop']
+
+    if Context.config.get('client_id') and Context.config.get('client_secret'):
+        client_id = Context.config.get('client_id')
+        client_secret = Context.config.get('client_secret')
+
+        resp = requests.post(
+            f"https://{shop}.myshopify.com/admin/oauth/access_token",
+            data={
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "grant_type": "client_credentials"
+            }
+        )
+
+        if not resp.ok:
+            raise ValueError(f"Failed to get access token using client credentials: {resp.text}")
+
+        # TODO: in theory if job runs longer than 24 hours, this will need to be refreshed
+        api_key = resp.json()['access_token']
+
+    if api_key is None:
+        raise ValueError("No 'access_token' or 'api_key' provided in the config file.")
+
     version = Context.config.get('api_version', '2024-10')
     session = shopify.Session(shop, version, api_key)
     shopify.ShopifyResource.activate_session(session)
