@@ -10,7 +10,7 @@ class Orders(Stream):
 
     def __init__(self):
         super().__init__()
-        if Context.config.get("use_created_at_replication_key_for_orders"):
+        if Context.config.get("use_created_at_replication_key_for_orders") is True:
             self.replication_key = "created_at"
         else:
             self.replication_key = "updated_at"
