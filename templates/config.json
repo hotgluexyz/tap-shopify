@@ -1,0 +1,14 @@
+{
+  "shop": "your-store-name",
+  "access_token": "shpat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "api_key": "alternative-to-access-token-if-not-using-oauth",
+  "client_id": "your-oauth-client-id",
+  "client_secret": "your-oauth-client-secret",
+  "api_version": "2026-01",
+  "graphql_api_version": "2026-01",
+  "shop_id": "your-store-name",
+  "start_date": "2017-01-01T00:00:00Z",
+  "date_window_size": 365,
+  "results_per_page": 175,
+  "use_created_at_replication_key_for_orders": false
+}

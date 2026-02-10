@@ -200,8 +200,8 @@ class Stream():
                 status_key = self.status_key or "status"
                 query_params = {
                     "since_id": since_id,
-                    "updated_at_min": updated_at_min,
-                    "updated_at_max": updated_at_max,
+                    self.replication_key + "_min": updated_at_min,
+                    self.replication_key + "_max": updated_at_max,
                     "limit": self.results_per_page,
                     status_key: "any"
                 }

@@ -48,14 +48,16 @@ This tap:
 
    The `shop` is your Shopify shop which will be the value `test_shop` in the string `https://test_shop.myshopify.com`
 
-4. Run the Tap in Discovery Mode
+   See the [templates/](templates/) folder for a full configuration example ([templates/config.json](templates/config.json)) and detailed option reference ([templates/README.md](templates/README.md)).
+
+3. Run the Tap in Discovery Mode
 
     tap-shopify -c config.json -d
 
    See the Singer docs on discovery mode
    [here](https://github.com/singer-io/getting-started/blob/master/docs/DISCOVERY_MODE.md#discovery-mode).
 
-5. Run the Tap in Sync Mode
+4. Run the Tap in Sync Mode
 
     tap-shopify -c config.json --catalog catalog-file.json
 
