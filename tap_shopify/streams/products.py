@@ -287,6 +287,13 @@ class Products(Stream):
         }
     """
 
+    def __init__(self):
+        super().__init__()
+        if Context.config.get("use_created_at_replication_key_for_products") is True:
+            self.replication_key = "created_at"
+        else:
+            self.replication_key = "updated_at"
+
     @shopify_error_handling
     def _call_api(self, query, variables):
         """
@@ -313,7 +320,7 @@ class Products(Stream):
         return scope_dict
 
     def get_products_metafields(self, updated_at_min, updated_at_max, cursor=None, metafields_cursor=None):
-        query = f"updated_at:>'{updated_at_min.isoformat()}' AND updated_at:<'{updated_at_max.isoformat()}'"
+        query = f"{self.replication_key}:>'{updated_at_min.isoformat()}' AND {self.replication_key}:<'{updated_at_max.isoformat()}'"
         variables = {
             "query": query,
             "cursor": cursor,
@@ -329,7 +336,7 @@ class Products(Stream):
         return self._call_api(self.product_metafields_gql_query, variables)
 
     def get_products_category(self, updated_at_min, updated_at_max, cursor=None):
-        query = f"updated_at:>'{updated_at_min.isoformat()}' AND updated_at:<'{updated_at_max.isoformat()}'"
+        query = f"{self.replication_key}:>'{updated_at_min.isoformat()}' AND {self.replication_key}:<'{updated_at_max.isoformat()}'"
         variables = {
             "query": query,
             "cursor": cursor
@@ -337,7 +344,7 @@ class Products(Stream):
         return self._call_api(self.products_category_gql_query, variables)
 
     def get_products(self, updated_at_min, updated_at_max, cursor=None):
-        query = f"updated_at:>'{updated_at_min.isoformat()}' AND updated_at:<'{updated_at_max.isoformat()}'"
+        query = f"{self.replication_key}:>'{updated_at_min.isoformat()}' AND {self.replication_key}:<'{updated_at_max.isoformat()}'"
         variables = {
             "query": query,
             "cursor": cursor
@@ -363,7 +370,7 @@ class Products(Stream):
         page_count = 0
 
         while True:
-            log_message = f"Fetching {item_type} updated between {updated_at_min} and {updated_at_max}, page {page_count}"
+            log_message = f"Fetching {item_type} {self.replication_key.split('_')[0]} between {updated_at_min} and {updated_at_max}, page {page_count}"
             if cursor:
                 log_message += f" with cursor {cursor}"
             LOGGER.info(log_message)
