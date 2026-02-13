@@ -19,8 +19,13 @@ class Products(Stream):
     name = 'products'
     replication_object = shopify.Product
 
-    # Reusable GraphQL fragments for product/variant queries
-    _PRODUCT_NODE_FIELDS = """
+    # Sort key placeholder; replaced at runtime with CREATED_AT or UPDATED_AT to match replication_key
+    _PRODUCT_SORT_KEY_PLACEHOLDER = "SORT_KEY_PLACEHOLDER"
+
+    products_gql_query = """
+        query GetProducts($query: String, $cursor: String) {
+            products(first: 50, after: $cursor, query: $query, sortKey: SORT_KEY_PLACEHOLDER) {
+                nodes {
                     status
                     publishedAt
                     createdAt
@@ -48,8 +53,23 @@ class Products(Stream):
                             width
                         }
                     }
-                    """
-    _INVENTORY_ITEM_BASE = """
+                    variants(first: 10, sortKey: ID) {
+                        nodes {
+                            id
+                            title
+                            sku
+                            position
+                            price
+                            compareAtPrice
+                            inventoryPolicy
+                            inventoryQuantity
+                            taxable
+                            taxCode
+                            updatedAt
+                            image {
+                                id
+                            }
+                            inventoryItem {
                                 id
                                 requiresShipping
                                 tracked
@@ -59,8 +79,88 @@ class Products(Stream):
                                         value
                                     }
                                 }
-                            """
-    _INVENTORY_ITEM_WITH_FULFILLMENT = """
+                            }
+                            createdAt
+                            barcode
+                            selectedOptions {
+                                name
+                                value
+                            }
+                            presentmentPrices (first: 30) {
+                                nodes {
+                                    compareAtPrice {
+                                        amount
+                                        currencyCode
+                                    }
+                                    price {
+                                        amount
+                                        currencyCode
+                                    }
+                                }
+                            }
+                        }
+                        pageInfo {
+                            hasNextPage
+                            endCursor
+                        }
+                    }
+                }
+                pageInfo {
+                    hasNextPage
+                    endCursor
+                }
+            }
+        }
+    """
+
+    products_gql_query_with_fulfillment_service = """
+        query GetProducts($query: String, $cursor: String) {
+            products(first: 20, after: $cursor, query: $query, sortKey: SORT_KEY_PLACEHOLDER) {
+                nodes {
+                    status
+                    publishedAt
+                    createdAt
+                    vendor
+                    updatedAt
+                    descriptionHtml
+                    productType
+                    tags
+                    handle
+                    templateSuffix
+                    title
+                    id
+                    options {
+                        id
+                        name
+                        position
+                        values
+                    }
+                    images(first: 250) {
+                        nodes {
+                            id
+                            altText
+                            src
+                            height
+                            width
+                        }
+                    }
+                    variants(first: 10, sortKey: ID) {
+                        nodes {
+                            id
+                            title
+                            sku
+                            position
+                            price
+                            compareAtPrice
+                            inventoryPolicy
+                            inventoryQuantity
+                            taxable
+                            taxCode
+                            updatedAt
+                            image {
+                                id
+                            }
+                            inventoryItem {
                                 id
                                 requiresShipping
                                 tracked
@@ -79,23 +179,6 @@ class Products(Stream):
                                         value
                                     }
                                 }
-                            """
-    _VARIANT_NODES_BASE = """
-                            id
-                            title
-                            sku
-                            position
-                            price
-                            compareAtPrice
-                            inventoryPolicy
-                            inventoryQuantity
-                            taxable
-                            taxCode
-                            updatedAt
-                            image {
-                                id
-                            }
-                            inventoryItem {""" + _INVENTORY_ITEM_BASE + """
                             }
                             createdAt
                             barcode
@@ -115,68 +198,12 @@ class Products(Stream):
                                     }
                                 }
                             }
-                        """
-    _VARIANT_NODES_WITH_FULFILLMENT = """
-                            id
-                            title
-                            sku
-                            position
-                            price
-                            compareAtPrice
-                            inventoryPolicy
-                            inventoryQuantity
-                            taxable
-                            taxCode
-                            updatedAt
-                            image {
-                                id
-                            }
-                            inventoryItem {""" + _INVENTORY_ITEM_WITH_FULFILLMENT + """
-                            }
-                            createdAt
-                            barcode
-                            selectedOptions {
-                                name
-                                value
-                            }
-                            presentmentPrices (first: 30) {
-                                nodes {
-                                    compareAtPrice {
-                                        amount
-                                        currencyCode
-                                    }
-                                    price {
-                                        amount
-                                        currencyCode
-                                    }
-                                }
-                            }
-                        """
-    _VARIANTS_PAGE_INFO = """
                         }
                         pageInfo {
                             hasNextPage
                             endCursor
                         }
-                    """
-
-    # Sort key placeholder; replaced at runtime with CREATED_AT or UPDATED_AT to match replication_key
-    _PRODUCT_SORT_KEY_PLACEHOLDER = "SORT_KEY_PLACEHOLDER"
-    products_gql_query = (
-        """
-        query GetProducts($query: String, $cursor: String) {
-            products(first: 50, after: $cursor, query: $query, sortKey: SORT_KEY_PLACEHOLDER) {
-                nodes {
-        """
-        + _PRODUCT_NODE_FIELDS
-        + """
-                    variants(first: 10, sortKey: ID) {
-                        nodes {
-        """
-        + _VARIANT_NODES_BASE
-        + _VARIANTS_PAGE_INFO
-        + """
-                }
+                    }
                 }
                 pageInfo {
                     hasNextPage
@@ -185,64 +212,131 @@ class Products(Stream):
             }
         }
     """
-    )
 
-    product_variants_gql_query = (
-        """
+    product_variants_gql_query = """
         query GetProductVariants($id: ID!, $variantsCursor: String) {
             product(id: $id) {
                 variants(first: 150, after: $variantsCursor, sortKey: ID) {
                     nodes {
-        """
-        + _VARIANT_NODES_BASE
-        + _VARIANTS_PAGE_INFO
-        + """
+                        id
+                        title
+                        sku
+                        position
+                        price
+                        compareAtPrice
+                        inventoryPolicy
+                        inventoryQuantity
+                        taxable
+                        taxCode
+                        updatedAt
+                        image {
+                            id
+                        }
+                        inventoryItem {
+                            id
+                            requiresShipping
+                            tracked
+                            measurement {
+                                weight {
+                                    unit
+                                    value
+                                }
+                            }
+                        }
+                        createdAt
+                        barcode
+                        selectedOptions {
+                            name
+                            value
+                        }
+                        presentmentPrices (first: 30) {
+                            nodes {
+                                compareAtPrice {
+                                    amount
+                                    currencyCode
+                                }
+                                price {
+                                    amount
+                                    currencyCode
+                                }
+                            }
+                        }
+                    }
+                    pageInfo {
+                        hasNextPage
+                        endCursor
+                    }
                 }
             }
         }
     """
-    )
 
-    product_variants_gql_query_with_fulfillment_service = (
-        """
+    product_variants_gql_query_with_fulfillment_service = """
         query GetProductVariants($id: ID!, $variantsCursor: String) {
             product(id: $id) {
                 variants(first: 100, after: $variantsCursor, sortKey: ID) {
                     nodes {
-        """
-        + _VARIANT_NODES_WITH_FULFILLMENT
-        + _VARIANTS_PAGE_INFO
-        + """
+                        id
+                        title
+                        sku
+                        position
+                        price
+                        compareAtPrice
+                        inventoryPolicy
+                        inventoryQuantity
+                        taxable
+                        taxCode
+                        updatedAt
+                        image {
+                            id
+                        }
+                        inventoryItem {
+                            id
+                            requiresShipping
+                            tracked
+                            inventoryLevels(first: 1) {
+                                nodes {
+                                    location {
+                                        fulfillmentService {
+                                            handle
+                                        }
+                                    }
+                                }
+                            }
+                            measurement {
+                                weight {
+                                    unit
+                                    value
+                                }
+                            }
+                        }
+                        createdAt
+                        barcode
+                        selectedOptions {
+                            name
+                            value
+                        }
+                        presentmentPrices (first: 30) {
+                            nodes {
+                                compareAtPrice {
+                                    amount
+                                    currencyCode
+                                }
+                                price {
+                                    amount
+                                    currencyCode
+                                }
+                            }
+                        }
+                    }
+                    pageInfo {
+                        hasNextPage
+                        endCursor
+                    }
                 }
             }
         }
     """
-    )
-
-    products_gql_query_with_fulfillment_service = (
-        """
-        query GetProducts($query: String, $cursor: String) {
-            products(first: 20, after: $cursor, query: $query, sortKey: SORT_KEY_PLACEHOLDER) {
-                nodes {
-        """
-        + _PRODUCT_NODE_FIELDS
-        + """
-                    variants(first: 10, sortKey: ID) {
-                        nodes {
-        """
-        + _VARIANT_NODES_WITH_FULFILLMENT
-        + _VARIANTS_PAGE_INFO
-        + """
-                }
-                }
-                pageInfo {
-                    hasNextPage
-                    endCursor
-                }
-            }
-        }
-    """
-    )
 
     products_category_gql_query = """
         query GetProducts($query: String, $cursor: String) {
@@ -257,7 +351,6 @@ class Products(Stream):
                             fullName,
                             isLeaf,
                             isRoot
-
                         }
                     }
                 }
@@ -547,6 +640,60 @@ class Products(Stream):
     def _has_next_page_variants(self, product):
         return product.get("variants", {}).get("pageInfo", {}).get("hasNextPage", False)
 
+    def _process_products_page(self, items, graphql_context, max_workers):
+        """
+        Expand variants for a page of products and yield ProductCompatibility records.
+        Uses a thread pool when max_workers > 1, otherwise processes sequentially.
+        """
+        if max_workers <= 1:
+            for product in items:
+                expanded = self._expand_product_variants(product, graphql_context)
+                yield ProductCompatibility(expanded)
+        else:
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                futures = {
+                    executor.submit(self._expand_product_variants, p, graphql_context): i
+                    for i, p in enumerate(items)
+                }
+                results = [None] * len(items)
+                for future in as_completed(futures):
+                    idx = futures[future]
+                    results[idx] = future.result()
+                for expanded in results:
+                    yield ProductCompatibility(expanded)
+
+    def _paginate_products_in_window(self, updated_at_min, updated_at_max, graphql_context, max_workers):
+        """
+        Generator that paginates over product pages within a single date window.
+        Yields ProductCompatibility instances for each product (with variants expanded).
+        """
+        cursor = None
+        page_count = 0
+        while True:
+            log_message = f"Fetching products updated between {updated_at_min} and {updated_at_max}, page {page_count}"
+            if cursor:
+                log_message += f" with cursor {cursor}"
+            LOGGER.info(log_message)
+
+            page = self.get_products(updated_at_min, updated_at_max, cursor)
+            items = page["data"]["products"]["nodes"]
+            page_info = page["data"]["products"]["pageInfo"]
+
+            if not items:
+                if page_info["hasNextPage"]:
+                    cursor = page_info["endCursor"]
+                    page_count += 1
+                    continue
+                return
+
+            yield from self._process_products_page(items, graphql_context, max_workers)
+
+            if page_info["hasNextPage"]:
+                cursor = page_info["endCursor"]
+                page_count += 1
+            else:
+                return
+
     def _expand_product_variants(self, product, graphql_context=None):
         """Fetch all variant pages for one product; returns product with variants expanded (same format)."""
         variant_nodes = list(product.get("variants", {}).get("nodes", []))
@@ -564,7 +711,10 @@ class Products(Stream):
             variants_page = self.get_product_variants(
                 product["id"], variants_cursor, graphql_context=graphql_context
             )
-            product_variants = variants_page["data"]["product"]["variants"]
+            product_data = variants_page.get("data", {}).get("product", {})
+            if product_data is None:
+                break
+            product_variants = product_data.get("variants", {})
             variant_nodes.extend(product_variants.get("nodes", []))
             product["variants"] = product_variants
             has_next_page = self._has_next_page_variants(product)
@@ -579,57 +729,17 @@ class Products(Stream):
         if not self.has_access_scope('read_locations'):
             LOGGER.warning("The `read_locations` access scope is not granted. The `fulfillment_service` field will not be available for product variants")
 
-        max_workers = int(Context.config.get("variant_fetch_workers", 8))
         updated_at_min = self.get_bookmark()
         stop_time = singer.utils.now().replace(microsecond=0)
         date_window_size = float(Context.config.get("date_window_size", 1))
+        max_workers = int(Context.config.get("variant_fetch_workers", 8))
 
         while updated_at_min < stop_time:
             updated_at_max = min(updated_at_min + timedelta(days=date_window_size), stop_time)
-            cursor = None
-            page_count = 0
-
-            while True:
-                log_message = f"Fetching products updated between {updated_at_min} and {updated_at_max}, page {page_count}"
-                if cursor:
-                    log_message += f" with cursor {cursor}"
-                LOGGER.info(log_message)
-
-                page = self.get_products(updated_at_min, updated_at_max, cursor)
-                items = page["data"]["products"]["nodes"]
-                page_info = page["data"]["products"]["pageInfo"]
-
-                if not items:
-                    if page_info["hasNextPage"]:
-                        cursor = page_info["endCursor"]
-                        page_count += 1
-                        continue
-                    break
-
-                graphql_context = self._get_graphql_context()
-                if max_workers <= 1:
-                    for product in items:
-                        expanded = self._expand_product_variants(product, graphql_context)
-                        yield ProductCompatibility(expanded)
-                else:
-                    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                        futures = {
-                            executor.submit(self._expand_product_variants, p, graphql_context): i
-                            for i, p in enumerate(items)
-                        }
-                        results = [None] * len(items)
-                        for future in as_completed(futures):
-                            idx = futures[future]
-                            results[idx] = future.result()
-                        for expanded in results:
-                            yield ProductCompatibility(expanded)
-
-                if page_info["hasNextPage"]:
-                    cursor = page_info["endCursor"]
-                    page_count += 1
-                else:
-                    break
-
+            graphql_context = self._get_graphql_context()
+            yield from self._paginate_products_in_window(
+                updated_at_min, updated_at_max, graphql_context, max_workers
+            )
             updated_at_min = updated_at_max
             self.update_bookmark(strftime(updated_at_min))
 
