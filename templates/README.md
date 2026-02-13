@@ -70,6 +70,11 @@ Number of records to request per API page for REST streams that support it. Inva
 - **Default**: `175` (stream default; some streams use fixed limits such as 100 or 250)
 - **Example**: `100` or `175`
 
+#### `variant_fetch_workers` (integer, optional)
+Maximum number of concurrent workers used when fetching product variants in the **products** stream. Higher values can speed up syncs but increase load on the API.
+- **Default**: `8`
+- **Example**: `4` or `16`
+
 #### `use_created_at_replication_key_for_orders` (boolean, optional)
 When `true`, the **orders** stream uses `created_at` instead of `updated_at` as its replication key. Use this when you want to replicate orders by creation time rather than last update time.
 - **Default**: `false` (orders use `updated_at`)
@@ -124,6 +129,7 @@ All options with sample values:
   "start_date": "2017-01-01T00:00:00Z",
   "date_window_size": 365,
   "results_per_page": 175,
+  "variant_fetch_workers": 8,
   "use_created_at_replication_key_for_orders": false
 }
 ```
