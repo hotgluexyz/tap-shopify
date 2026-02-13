@@ -160,10 +160,12 @@ class Products(Stream):
                         }
                     """
 
+    # Sort key placeholder; replaced at runtime with CREATED_AT or UPDATED_AT to match replication_key
+    _PRODUCT_SORT_KEY_PLACEHOLDER = "SORT_KEY_PLACEHOLDER"
     products_gql_query = (
         """
         query GetProducts($query: String, $cursor: String) {
-            products(first: 50, after: $cursor, query: $query, sortKey: UPDATED_AT) {
+            products(first: 50, after: $cursor, query: $query, sortKey: SORT_KEY_PLACEHOLDER) {
                 nodes {
         """
         + _PRODUCT_NODE_FIELDS
@@ -220,7 +222,7 @@ class Products(Stream):
     products_gql_query_with_fulfillment_service = (
         """
         query GetProducts($query: String, $cursor: String) {
-            products(first: 20, after: $cursor, query: $query) {
+            products(first: 20, after: $cursor, query: $query, sortKey: SORT_KEY_PLACEHOLDER) {
                 nodes {
         """
         + _PRODUCT_NODE_FIELDS
@@ -337,6 +339,10 @@ class Products(Stream):
         else:
             self.replication_key = "updated_at"
 
+    def _get_product_sort_key(self):
+        """Return GraphQL ProductSortKey matching replication_key so paging order is consistent."""
+        return "CREATED_AT" if self.replication_key == "created_at" else "UPDATED_AT"
+
     @shopify_error_handling
     def _call_api(self, query, variables):
         """
@@ -392,10 +398,17 @@ class Products(Stream):
             "query": query,
             "cursor": cursor
         }
+        sort_key = self._get_product_sort_key()
         if self.has_access_scope('read_locations'):
-            return self._call_api(self.products_gql_query_with_fulfillment_service, variables)
+            gql_query = self.products_gql_query_with_fulfillment_service.replace(
+                self._PRODUCT_SORT_KEY_PLACEHOLDER, sort_key
+            )
+            return self._call_api(gql_query, variables)
         else:
-            return self._call_api(self.products_gql_query, variables)
+            gql_query = self.products_gql_query.replace(
+                self._PRODUCT_SORT_KEY_PLACEHOLDER, sort_key
+            )
+            return self._call_api(gql_query, variables)
 
     def _get_graphql_context(self):
         """Return (endpoint, headers) for thread-safe GraphQL calls without global session."""
