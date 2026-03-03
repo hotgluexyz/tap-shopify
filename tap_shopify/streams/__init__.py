@@ -3,6 +3,7 @@ import tap_shopify.streams.customers
 import tap_shopify.streams.orders
 import tap_shopify.streams.order_refunds
 import tap_shopify.streams.markets
+import tap_shopify.streams.market_prices
 import tap_shopify.streams.metafields
 import tap_shopify.streams.transactions
 import tap_shopify.streams.products
