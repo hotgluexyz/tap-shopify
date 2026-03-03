@@ -114,9 +114,9 @@ class MarketPrices(Stream):
             
             while True:
                 response = self.get_market_price_lists(market_id, cursor)
-                market_data = response.get("data", {}).get("market")
+                market_data = response.get("data", {}).get("market", {})
                 
-                price_list = market_data.get("priceList")
+                price_list = market_data.get("priceList", {})
                 
                 prices = price_list.get("prices", {})
                 price_nodes = prices.get("nodes", [])
