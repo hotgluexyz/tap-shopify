@@ -78,7 +78,7 @@
       "email": {
         "type": [
           "null",
-          "string"
+          "number"
         ]
       },
       "multipass_identifier": {
@@ -96,7 +96,7 @@
           "city": {
             "type": [
               "null",
-              "string"
+              "number"
             ]
           },
           "address1": {
@@ -230,7 +230,7 @@
       "first_name": {
         "type": [
           "null",
-          "string"
+          "integer"
         ]
       },
       "updated_at": {
