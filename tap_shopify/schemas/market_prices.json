@@ -1,0 +1,114 @@
+{
+  "type": "object",
+  "properties": {
+    "market_id": {
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    "market_name": {
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    "price_list_name": {
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    "price_list_id": {
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    "price_list_currency": {
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    "variant_id": {
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    "variant": {
+      "type": [
+        "null",
+        "object"
+      ],
+      "properties": {
+        "id": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "sku": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "title": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "product": {
+          "type": [
+            "null",
+            "object"
+          ],
+          "properties": {
+            "id": {
+              "type": [
+                "null",
+                "string"
+              ]
+            },
+            "title": {
+              "type": [
+                "null",
+                "string"
+              ]
+            },
+            "handle": {
+              "type": [
+                "null",
+                "string"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "price": {
+      "type": [
+        "null",
+        "object"
+      ],
+      "properties": {
+        "amount": {
+          "type": [
+            "null",
+            "string"
+          ],
+          "format": "singer.decimal"
+        },
+        "currencyCode": {
+          "type": [
+            "null",
+            "string"
+          ]
+        }
+      }
+    }
+  }
+}
