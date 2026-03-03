@@ -13,7 +13,6 @@ from tap_shopify.graph_ql import GraphQL
 
 LOGGER = singer.get_logger()
 
-
 class HiddenPrints:
     def __enter__(self):
         self._original_stdout = sys.stdout
@@ -22,7 +21,6 @@ class HiddenPrints:
     def __exit__(self, exc_type, exc_val, exc_tb):
         sys.stdout.close()
         sys.stdout = self._original_stdout
-
 
 class MarketPrices(Stream):
     name = 'market_prices'
@@ -101,11 +99,9 @@ class MarketPrices(Stream):
         """
         Iterate through all markets and fetch their prices.
         """
-        # Get parent Markets stream
         selected_parent = Context.stream_objects['markets']()
         selected_parent.name = "markets"
-        
-        # Iterate through each market
+
         for market in selected_parent.get_objects():
             market_id = market.get("id")
             if not market_id:
@@ -117,47 +113,35 @@ class MarketPrices(Stream):
             page_count = 0
             
             while True:
-                try:
-                    response = self.get_market_price_lists(market_id, cursor)
-                    market_data = response.get("data", {}).get("market")
-                    
-                    if not market_data:
-                        LOGGER.warning(f"No market data returned for market {market_id}")
-                        break
-                    
-                    price_list = market_data.get("priceList")
-                    if not price_list:
-                        LOGGER.info(f"Market {market_id} has no price list")
-                        break
-                    
-                    prices = price_list.get("prices", {})
-                    price_nodes = prices.get("nodes", [])
-                    page_info = prices.get("pageInfo", {})
-                    
-                    # Yield each price record with market context
-                    for price_node in price_nodes:
-                        record = {
-                            "market_id": market_id,
-                            "market_name": market.get("name"),
-                            "price_list_name": price_list.get("name"),
-                            "price_list_id": price_list.get("id"),
-                            "price_list_currency": price_list.get("currency"),
-                            "variant_id": price_node.get("variant", {}).get("id"),
-                            "variant": price_node.get("variant", {}),
-                            "price": price_node.get("price", {}),
-                        }
-                        yield record
-                    
-                    # Check if there are more pages
-                    if page_info.get("hasNextPage"):
-                        cursor = page_info.get("endCursor")
-                        page_count += 1
-                        LOGGER.info(f"Fetching additional prices for market {market_id}, page {page_count}")
-                    else:
-                        break
-                        
-                except Exception as e:
-                    LOGGER.error(f"Error processing market {market_id}: {str(e)}")
+                response = self.get_market_price_lists(market_id, cursor)
+                market_data = response.get("data", {}).get("market")
+                
+                price_list = market_data.get("priceList")
+                
+                prices = price_list.get("prices", {})
+                price_nodes = prices.get("nodes", [])
+                page_info = prices.get("pageInfo", {})
+                
+                # Yield each price record with market context
+                for price_node in price_nodes:
+                    record = {
+                        "market_id": market_id,
+                        "market_name": market.get("name"),
+                        "price_list_name": price_list.get("name"),
+                        "price_list_id": price_list.get("id"),
+                        "price_list_currency": price_list.get("currency"),
+                        "variant_id": price_node.get("variant", {}).get("id"),
+                        "variant": price_node.get("variant", {}),
+                        "price": price_node.get("price", {}),
+                    }
+                    yield record
+                
+                # Check if there are more pages
+                if page_info.get("hasNextPage"):
+                    cursor = page_info.get("endCursor")
+                    page_count += 1
+                    LOGGER.info(f"Fetching additional prices for market {market_id}, page {page_count}")
+                else:
                     break
     
     def sync(self):
@@ -166,11 +150,5 @@ class MarketPrices(Stream):
         for incoming_item in self.get_objects():
             yield incoming_item
         self.update_bookmark(strftime(self.max_bookmark))
-
-    def post_process(self, record):
-        record["market_id"] = record["market_id"].split("/")[-1]
-        record["variant_id"] = record["variant"]["id"].split("/")[-1]
-        return record
-
 
 Context.stream_objects['market_prices'] = MarketPrices
