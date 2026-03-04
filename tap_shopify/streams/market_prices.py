@@ -13,7 +13,10 @@ from tap_shopify.graph_ql import GraphQL
 
 LOGGER = singer.get_logger()
 
-def get_value_none_is_empty_default(data, key, default={}):
+def get_value_none_is_empty_default(data, key, default=None):
+    # Needs this, or all default dictionaries point to same object.
+    if default is None:
+        default = {}
     if isinstance(data, dict) and data.get(key, default) is not None:
         return data.get(key, default)
     return default
@@ -120,7 +123,7 @@ class MarketPrices(Stream):
             while True:
                 response = self.get_market_price_lists(market_id, cursor)
 
-                market_data = get_value_none_is_empty_default(response, "data").get("market", {})
+                market_data = get_value_none_is_empty_default(get_value_none_is_empty_default(response, "data"), "market")
                 
                 price_list = get_value_none_is_empty_default(market_data, "priceList")
 
