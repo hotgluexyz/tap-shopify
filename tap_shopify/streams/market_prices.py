@@ -13,6 +13,14 @@ from tap_shopify.graph_ql import GraphQL
 
 LOGGER = singer.get_logger()
 
+def get_value_none_is_empty_default(data, key, default=None):
+    # Needs this, or all default dictionaries point to same object.
+    if default is None:
+        default = {}
+    if isinstance(data, dict) and data.get(key, default) is not None:
+        return data.get(key, default)
+    return default
+
 class HiddenPrints:
     def __enter__(self):
         self._original_stdout = sys.stdout
@@ -114,13 +122,17 @@ class MarketPrices(Stream):
             
             while True:
                 response = self.get_market_price_lists(market_id, cursor)
-                market_data = response.get("data", {}).get("market", {})
+
+                market_data = get_value_none_is_empty_default(get_value_none_is_empty_default(response, "data"), "market")
                 
-                price_list = market_data.get("priceList", {})
+                price_list = get_value_none_is_empty_default(market_data, "priceList")
+
+                if not price_list:
+                    LOGGER.warning(f"Market {market_id} has no price list")
                 
-                prices = price_list.get("prices", {})
-                price_nodes = prices.get("nodes", [])
-                page_info = prices.get("pageInfo", {})
+                prices = get_value_none_is_empty_default(price_list, "prices")
+                price_nodes = get_value_none_is_empty_default(prices, "nodes", [])
+                page_info = get_value_none_is_empty_default(prices, "pageInfo")
                 
                 # Yield each price record with market context
                 for price_node in price_nodes:
@@ -130,7 +142,7 @@ class MarketPrices(Stream):
                         "price_list_name": price_list.get("name"),
                         "price_list_id": price_list.get("id"),
                         "price_list_currency": price_list.get("currency"),
-                        "variant_id": price_node.get("variant", {}).get("id"),
+                        "variant_id": get_value_none_is_empty_default(price_node, "variant").get("id"),
                         "variant": price_node.get("variant", {}),
                         "price": price_node.get("price", {}),
                     }
