@@ -16,6 +16,7 @@ from requests.exceptions import ConnectionError
 LOGGER = singer.get_logger()
 
 RESULTS_PER_PAGE = 175
+MIN_PAGE_SIZE = 10
 
 # We've observed 500 errors returned if this is too large (30 days was too
 # large for a customer)
@@ -96,8 +97,11 @@ def retry_after_wait_gen(**kwargs):
 
 def shopify_error_handling(fnc):
     @backoff.on_exception(backoff.expo,
-                          (pyactiveresource.connection.ServerError,
-                           pyactiveresource.formats.Error,
+                          pyactiveresource.connection.ServerError,
+                          on_backoff=retry_handler,
+                          max_tries=3)
+    @backoff.on_exception(backoff.expo,
+                          (pyactiveresource.formats.Error,
                            simplejson.scanner.JSONDecodeError,
                            ConnectionError,
                            RetryableAPIError),
@@ -134,6 +138,20 @@ class Stream():
 
     def __init__(self):
         self.results_per_page = Context.get_results_per_page(RESULTS_PER_PAGE)
+
+    def reduce_page_size(self, current_page_size=None):
+        """Decrease page size by 20 after a persistent server error.
+        Returns the new page size, or None if already at minimum."""
+        size = current_page_size or self.results_per_page
+        if size <= MIN_PAGE_SIZE:
+            return None
+        new_size = max(size - 20, MIN_PAGE_SIZE)
+        LOGGER.warning(
+            "Reducing page size from %d to %d for stream '%s' after server error",
+            size, new_size, self.name)
+        if current_page_size is None:
+            self.results_per_page = new_size
+        return new_size
 
     def get_bookmark(self):
         bookmark = (singer.get_bookmark(Context.state,
@@ -206,8 +224,13 @@ class Stream():
                     status_key: "any"
                 }
 
-                with metrics.http_request_timer(self.name):
-                    objects = self.call_api(query_params)
+                try:
+                    with metrics.http_request_timer(self.name):
+                        objects = self.call_api(query_params)
+                except pyactiveresource.connection.ServerError:
+                    if self.reduce_page_size():
+                        continue
+                    raise
 
                 for obj in objects:
                     if obj.id < since_id:
