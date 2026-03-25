@@ -30,15 +30,16 @@ class InventoryLevels(Stream):
         return inventory_page.next_page()
 
     def get_inventory_levels(self, parent_object, bookmark):
-        try:
-            inventory_page = self.api_call_for_inventory_levels(parent_object, bookmark)
-        except pyactiveresource.connection.ServerError:
-            new_size = self.reduce_page_size(self.inventory_page_size)
-            if new_size:
-                self.inventory_page_size = new_size
+        while True:
+            try:
                 inventory_page = self.api_call_for_inventory_levels(parent_object, bookmark)
-            else:
-                raise
+                break
+            except pyactiveresource.connection.ServerError:
+                new_size = self.reduce_page_size(self.inventory_page_size)
+                if new_size:
+                    self.inventory_page_size = new_size
+                else:
+                    raise
         yield from inventory_page
 
         while inventory_page.has_next_page():

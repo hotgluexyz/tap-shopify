@@ -83,15 +83,16 @@ class Transactions(Stream):
         #
         # https://github.com/Shopify/shopify_python_api/blob/e8c475ccc84b1516912b37f691d00ecd24921e9b/shopify/resources/order.py#L17-L18
 
-        try:
-            page = self.call_api_for_transactions(parent_object)
-        except pyactiveresource.connection.ServerError:
-            new_size = self.reduce_page_size(self.transactions_page_size)
-            if new_size:
-                self.transactions_page_size = new_size
+        while True:
+            try:
                 page = self.call_api_for_transactions(parent_object)
-            else:
-                raise
+                break
+            except pyactiveresource.connection.ServerError:
+                new_size = self.reduce_page_size(self.transactions_page_size)
+                if new_size:
+                    self.transactions_page_size = new_size
+                else:
+                    raise
         yield from page
 
         while page.has_next_page():

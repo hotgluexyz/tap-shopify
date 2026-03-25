@@ -30,15 +30,16 @@ class EventsProducts(Stream):
         )
 
     def get_events_products(self):
-        try:
-            page = self.call_api_for_events_products()
-        except pyactiveresource.connection.ServerError:
-            new_size = self.reduce_page_size(self.events_page_size)
-            if new_size:
-                self.events_page_size = new_size
+        while True:
+            try:
                 page = self.call_api_for_events_products()
-            else:
-                raise
+                break
+            except pyactiveresource.connection.ServerError:
+                new_size = self.reduce_page_size(self.events_page_size)
+                if new_size:
+                    self.events_page_size = new_size
+                else:
+                    raise
         yield from page
 
         while page.has_next_page():
