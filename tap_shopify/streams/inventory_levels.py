@@ -1,4 +1,5 @@
 import json
+import pyactiveresource
 import shopify
 from singer.utils import strftime, strptime_to_utc
 from tap_shopify.streams.base import (Stream,
@@ -12,20 +13,32 @@ class InventoryLevels(Stream):
     key_properties = ['location_id', 'inventory_item_id']
     replication_object = shopify.InventoryLevel
 
+    def __init__(self):
+        super().__init__()
+        self.inventory_page_size = RESULTS_PER_PAGE
+
     @shopify_error_handling
     def api_call_for_inventory_levels(self, parent_object_id, bookmark):
         return self.replication_object.find(
-            updated_at_min = bookmark,
-            limit = RESULTS_PER_PAGE,
+            updated_at_min=bookmark,
+            limit=self.inventory_page_size,
             location_ids=parent_object_id
         )
-    
+
     @shopify_error_handling
     def get_next_page(self, inventory_page):
         return inventory_page.next_page()
 
     def get_inventory_levels(self, parent_object, bookmark):
-        inventory_page = self.api_call_for_inventory_levels(parent_object, bookmark)
+        try:
+            inventory_page = self.api_call_for_inventory_levels(parent_object, bookmark)
+        except pyactiveresource.connection.ServerError:
+            new_size = self.reduce_page_size(self.inventory_page_size)
+            if new_size:
+                self.inventory_page_size = new_size
+                inventory_page = self.api_call_for_inventory_levels(parent_object, bookmark)
+            else:
+                raise
         yield from inventory_page
 
         while inventory_page.has_next_page():

@@ -1,3 +1,4 @@
+import pyactiveresource
 import shopify
 from singer.utils import strftime, strptime_to_utc
 from tap_shopify.context import Context
@@ -26,7 +27,12 @@ class OrderRefunds(Stream):
         for parent_object in selected_parent.get_objects():
             since_id = 1
             while True:
-                refunds = self.get_refunds(parent_object, since_id)
+                try:
+                    refunds = self.get_refunds(parent_object, since_id)
+                except pyactiveresource.connection.ServerError:
+                    if self.reduce_page_size():
+                        continue
+                    raise
                 for refund in refunds:
                     if refund.id < since_id:
                         raise OutOfOrderIdsError("refund.id < since_id: {} < {}".format(

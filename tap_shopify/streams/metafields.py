@@ -1,4 +1,5 @@
 import json
+import pyactiveresource
 import shopify
 import singer
 
@@ -45,7 +46,12 @@ class Metafields(Stream):
                 for parent_object in selected_parent.get_objects():
                     since_id = 1
                     while True:
-                        metafields = get_metafields(parent_object, since_id)
+                        try:
+                            metafields = get_metafields(parent_object, since_id)
+                        except pyactiveresource.connection.ServerError:
+                            if self.reduce_page_size():
+                                continue
+                            raise
                         for metafield in metafields:
                             if metafield.id < since_id:
                                 raise OutOfOrderIdsError("metafield.id < since_id: {} < {}".format(

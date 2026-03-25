@@ -1,3 +1,4 @@
+import pyactiveresource
 import shopify
 import singer
 from singer import utils
@@ -22,7 +23,12 @@ class Collects(Stream):
                 "limit": self.results_per_page,
             }
 
-            objects = self.call_api(query_params)
+            try:
+                objects = self.call_api(query_params)
+            except pyactiveresource.connection.ServerError:
+                if self.reduce_page_size():
+                    continue
+                raise
 
             for obj in objects:
                 # Syncing Collects is a full sync every time but emitting

@@ -1,3 +1,4 @@
+import pyactiveresource
 import shopify
 import singer
 from singer.utils import strftime, strptime_to_utc
@@ -15,17 +16,29 @@ class EventsProducts(Stream):
     replication_key = 'created_at'
     replication_object = shopify.Event
 
+    def __init__(self):
+        super().__init__()
+        self.events_page_size = EVENTS_RESULTS_PER_PAGE
+
     @shopify_error_handling
     def call_api_for_events_products(self):
         return self.replication_object.find(
-            limit=EVENTS_RESULTS_PER_PAGE,
+            limit=self.events_page_size,
             filter="Product",
             # verb = "destroy",
-            created_at_min = self.get_bookmark()
+            created_at_min=self.get_bookmark()
         )
 
-    def get_events_products(self, ):
-        page = self.call_api_for_events_products()
+    def get_events_products(self):
+        try:
+            page = self.call_api_for_events_products()
+        except pyactiveresource.connection.ServerError:
+            new_size = self.reduce_page_size(self.events_page_size)
+            if new_size:
+                self.events_page_size = new_size
+                page = self.call_api_for_events_products()
+            else:
+                raise
         yield from page
 
         while page.has_next_page():
