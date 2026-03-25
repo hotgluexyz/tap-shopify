@@ -6,7 +6,6 @@ import singer
 from tap_shopify.context import Context
 from tap_shopify.streams.base import (Stream,
                                       shopify_error_handling,
-                                      RESULTS_PER_PAGE,
                                       OutOfOrderIdsError)
 
 LOGGER = singer.get_logger()
@@ -17,11 +16,11 @@ def get_selected_parents():
             yield Context.stream_objects[parent_stream]()
 
 @shopify_error_handling
-def get_metafields(parent_object, since_id):
+def get_metafields(parent_object, since_id, limit):
     # This call results in an HTTP request - the parent object never has a
     # cache of this data so we have to issue that request.
     return parent_object.metafields(
-        limit=Context.get_results_per_page(RESULTS_PER_PAGE),
+        limit=limit,
         since_id=since_id)
 
 class Metafields(Stream):
@@ -47,7 +46,7 @@ class Metafields(Stream):
                     since_id = 1
                     while True:
                         try:
-                            metafields = get_metafields(parent_object, since_id)
+                            metafields = get_metafields(parent_object, since_id, self.results_per_page)
                         except pyactiveresource.connection.ServerError:
                             if self.reduce_page_size():
                                 continue
