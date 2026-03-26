@@ -1,3 +1,4 @@
+import pyactiveresource
 import shopify
 import singer
 from singer.utils import strftime, strptime_to_utc
@@ -13,17 +14,30 @@ class DeletedProducts(Stream):
     replication_key = 'created_at'
     replication_object = shopify.Event
 
+    def __init__(self):
+        super().__init__()
+        self.deleted_products_page_size = DELETED_PRODUCTS_RESULTS_PER_PAGE
+
     @shopify_error_handling
     def call_api_for_deleted_products(self):
         return self.replication_object.find(
-            limit=DELETED_PRODUCTS_RESULTS_PER_PAGE,
+            limit=self.deleted_products_page_size,
             filter="Product",
             verb="destroy",
             created_at_min=self.get_bookmark()
         )
 
     def get_deleted_products(self):
-        page = self.call_api_for_deleted_products()
+        while True:
+            try:
+                page = self.call_api_for_deleted_products()
+                break
+            except pyactiveresource.connection.ServerError:
+                new_size = self.reduce_page_size(self.deleted_products_page_size)
+                if new_size:
+                    self.deleted_products_page_size = new_size
+                else:
+                    raise
         yield from page
 
         while page.has_next_page():

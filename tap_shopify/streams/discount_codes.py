@@ -1,3 +1,4 @@
+import pyactiveresource
 import shopify
 import singer
 from singer.utils import strftime, strptime_to_utc
@@ -15,15 +16,28 @@ class DiscountCodes(Stream):
     replication_key = 'created_at'
     replication_object = shopify.DiscountCode
 
+    def __init__(self):
+        super().__init__()
+        self.discount_codes_page_size = DISCOUNT_CODES_RESULTS_PER_PAGE
+
     @shopify_error_handling
     def call_api_for_discount_codes(self, parent_object):
         return self.replication_object.find(
-            limit=DISCOUNT_CODES_RESULTS_PER_PAGE,
+            limit=self.discount_codes_page_size,
             price_rule_id=parent_object.id,
         )
 
     def get_discount_codes(self, parent_object):
-        page = self.call_api_for_discount_codes(parent_object)
+        while True:
+            try:
+                page = self.call_api_for_discount_codes(parent_object)
+                break
+            except pyactiveresource.connection.ServerError:
+                new_size = self.reduce_page_size(self.discount_codes_page_size)
+                if new_size:
+                    self.discount_codes_page_size = new_size
+                else:
+                    raise
         yield from page
 
         while page.has_next_page():

@@ -1,3 +1,4 @@
+import pyactiveresource
 import shopify
 import singer
 from singer.utils import strftime, strptime_to_utc
@@ -61,10 +62,14 @@ class Transactions(Stream):
     # nothing to set the `replication_method` member to.
     # https://help.shopify.com/en/api/reference/orders/transaction#properties
 
+    def __init__(self):
+        super().__init__()
+        self.transactions_page_size = TRANSACTIONS_RESULTS_PER_PAGE
+
     @shopify_error_handling
     def call_api_for_transactions(self, parent_object):
         return self.replication_object.find(
-            limit=TRANSACTIONS_RESULTS_PER_PAGE,
+            limit=self.transactions_page_size,
             order_id=parent_object.id,
         )
 
@@ -78,7 +83,16 @@ class Transactions(Stream):
         #
         # https://github.com/Shopify/shopify_python_api/blob/e8c475ccc84b1516912b37f691d00ecd24921e9b/shopify/resources/order.py#L17-L18
 
-        page = self.call_api_for_transactions(parent_object)
+        while True:
+            try:
+                page = self.call_api_for_transactions(parent_object)
+                break
+            except pyactiveresource.connection.ServerError:
+                new_size = self.reduce_page_size(self.transactions_page_size)
+                if new_size:
+                    self.transactions_page_size = new_size
+                else:
+                    raise
         yield from page
 
         while page.has_next_page():
