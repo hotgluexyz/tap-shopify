@@ -3,6 +3,8 @@ from tap_shopify.streams.base import (Stream, shopify_error_handling)
 from tap_shopify.context import Context
 import json
 from datetime import timedelta
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import time
 import singer
 from singer.utils import strftime
 from tap_shopify.streams.compatibility.product_compatibility import ProductCompatibility
@@ -10,15 +12,19 @@ from tap_shopify.streams.compatibility.metafield_compatibility import MetafieldC
 from tap_shopify.streams.compatibility.product_category_compatibility import ProductCategoryCompatibility
 from tap_shopify.graph_ql import GraphQL
 
+
 LOGGER = singer.get_logger()
 
 class Products(Stream):
     name = 'products'
     replication_object = shopify.Product
 
+    # Sort key placeholder; replaced at runtime with CREATED_AT or UPDATED_AT to match replication_key
+    _PRODUCT_SORT_KEY_PLACEHOLDER = "SORT_KEY_PLACEHOLDER"
+
     products_gql_query = """
         query GetProducts($query: String, $cursor: String) {
-            products(first: 20, after: $cursor, query: $query) {
+            products(first: 50, after: $cursor, query: $query, sortKey: SORT_KEY_PLACEHOLDER) {
                 nodes {
                     status
                     publishedAt
@@ -47,7 +53,7 @@ class Products(Stream):
                             width
                         }
                     }
-                    variants(first: 100) {
+                    variants(first: 10, sortKey: ID) {
                         nodes {
                             id
                             title
@@ -93,6 +99,10 @@ class Products(Stream):
                                 }
                             }
                         }
+                        pageInfo {
+                            hasNextPage
+                            endCursor
+                        }
                     }
                 }
                 pageInfo {
@@ -105,7 +115,7 @@ class Products(Stream):
 
     products_gql_query_with_fulfillment_service = """
         query GetProducts($query: String, $cursor: String) {
-            products(first: 20, after: $cursor, query: $query) {
+            products(first: 20, after: $cursor, query: $query, sortKey: SORT_KEY_PLACEHOLDER) {
                 nodes {
                     status
                     publishedAt
@@ -134,7 +144,7 @@ class Products(Stream):
                             width
                         }
                     }
-                    variants(first: 100) {
+                    variants(first: 10, sortKey: ID) {
                         nodes {
                             id
                             title
@@ -189,11 +199,140 @@ class Products(Stream):
                                 }
                             }
                         }
+                        pageInfo {
+                            hasNextPage
+                            endCursor
+                        }
                     }
                 }
                 pageInfo {
                     hasNextPage
                     endCursor
+                }
+            }
+        }
+    """
+
+    product_variants_gql_query = """
+        query GetProductVariants($id: ID!, $variantsCursor: String) {
+            product(id: $id) {
+                variants(first: 150, after: $variantsCursor, sortKey: ID) {
+                    nodes {
+                        id
+                        title
+                        sku
+                        position
+                        price
+                        compareAtPrice
+                        inventoryPolicy
+                        inventoryQuantity
+                        taxable
+                        taxCode
+                        updatedAt
+                        image {
+                            id
+                        }
+                        inventoryItem {
+                            id
+                            requiresShipping
+                            tracked
+                            measurement {
+                                weight {
+                                    unit
+                                    value
+                                }
+                            }
+                        }
+                        createdAt
+                        barcode
+                        selectedOptions {
+                            name
+                            value
+                        }
+                        presentmentPrices (first: 30) {
+                            nodes {
+                                compareAtPrice {
+                                    amount
+                                    currencyCode
+                                }
+                                price {
+                                    amount
+                                    currencyCode
+                                }
+                            }
+                        }
+                    }
+                    pageInfo {
+                        hasNextPage
+                        endCursor
+                    }
+                }
+            }
+        }
+    """
+
+    product_variants_gql_query_with_fulfillment_service = """
+        query GetProductVariants($id: ID!, $variantsCursor: String) {
+            product(id: $id) {
+                variants(first: 100, after: $variantsCursor, sortKey: ID) {
+                    nodes {
+                        id
+                        title
+                        sku
+                        position
+                        price
+                        compareAtPrice
+                        inventoryPolicy
+                        inventoryQuantity
+                        taxable
+                        taxCode
+                        updatedAt
+                        image {
+                            id
+                        }
+                        inventoryItem {
+                            id
+                            requiresShipping
+                            tracked
+                            inventoryLevels(first: 1) {
+                                nodes {
+                                    location {
+                                        fulfillmentService {
+                                            handle
+                                        }
+                                    }
+                                }
+                            }
+                            measurement {
+                                weight {
+                                    unit
+                                    value
+                                }
+                            }
+                        }
+                        createdAt
+                        barcode
+                        selectedOptions {
+                            name
+                            value
+                        }
+                        presentmentPrices (first: 30) {
+                            nodes {
+                                compareAtPrice {
+                                    amount
+                                    currencyCode
+                                }
+                                price {
+                                    amount
+                                    currencyCode
+                                }
+                            }
+                        }
+                    }
+                    pageInfo {
+                        hasNextPage
+                        endCursor
+                    }
                 }
             }
         }
@@ -212,7 +351,6 @@ class Products(Stream):
                             fullName,
                             isLeaf,
                             isRoot
-
                         }
                     }
                 }
@@ -294,6 +432,10 @@ class Products(Stream):
         else:
             self.replication_key = "updated_at"
 
+    def _get_product_sort_key(self):
+        """Return GraphQL ProductSortKey matching replication_key so paging order is consistent."""
+        return "CREATED_AT" if self.replication_key == "created_at" else "UPDATED_AT"
+
     @shopify_error_handling
     def _call_api(self, query, variables):
         """
@@ -349,10 +491,57 @@ class Products(Stream):
             "query": query,
             "cursor": cursor
         }
+        sort_key = self._get_product_sort_key()
         if self.has_access_scope('read_locations'):
-            return self._call_api(self.products_gql_query_with_fulfillment_service, variables)
+            gql_query = self.products_gql_query_with_fulfillment_service.replace(
+                self._PRODUCT_SORT_KEY_PLACEHOLDER, sort_key
+            )
+            return self._call_api(gql_query, variables)
         else:
-            return self._call_api(self.products_gql_query, variables)
+            gql_query = self.products_gql_query.replace(
+                self._PRODUCT_SORT_KEY_PLACEHOLDER, sort_key
+            )
+            return self._call_api(gql_query, variables)
+
+    def _get_graphql_context(self):
+        """Return (endpoint, headers) for thread-safe GraphQL calls without global session."""
+        shopify.ShopifyResource.activate_session(Context.shopify_graphql_session)
+        endpoint = shopify.ShopifyResource.get_site() + "/graphql.json"
+        headers = dict(shopify.ShopifyResource.get_headers())
+        shopify.ShopifyResource.activate_session(Context.shopify_rest_session)
+        headers.setdefault("Accept", "application/json")
+        headers.setdefault("Content-Type", "application/json")
+        return (endpoint, headers)
+
+    @shopify_error_handling
+    def _call_graphql_direct(self, endpoint, headers, query, variables, max_throttle_retries=5):
+        """Execute GraphQL with pre-fetched (endpoint, headers). Uses GraphQL.execute_with_context + THROTTLED retry."""
+        for attempt in range(max_throttle_retries + 1):
+            response_str = GraphQL.execute_with_context(endpoint, headers, query, variables)
+            result = json.loads(response_str)
+            if not result.get("errors"):
+                return result
+            err = result["errors"][0]
+            if err.get("extensions", {}).get("code") == "THROTTLED" and attempt < max_throttle_retries:
+                LOGGER.info("GraphQL throttled, waiting 2s before retry (%s/%s)", attempt + 1, max_throttle_retries)
+                time.sleep(2)
+                continue
+            raise Exception(result["errors"])
+
+    def get_product_variants(self, product_id, variants_cursor=None, graphql_context=None):
+        variables = {
+            "id": product_id,
+            "variantsCursor": variants_cursor
+        }
+        query = (
+            self.product_variants_gql_query_with_fulfillment_service
+            if self.has_access_scope("read_locations")
+            else self.product_variants_gql_query
+        )
+        if graphql_context is not None:
+            endpoint, headers = graphql_context
+            return self._call_graphql_direct(endpoint, headers, query, variables)
+        return self._call_api(query, variables)
 
     def paginate(self, fetch_page, updated_at_min, updated_at_max, process_item, item_type):
         """
@@ -448,6 +637,90 @@ class Products(Stream):
             updated_at_min = updated_at_max
             self.update_bookmark(strftime(updated_at_min))
 
+    def _has_next_page_variants(self, product):
+        return product.get("variants", {}).get("pageInfo", {}).get("hasNextPage", False)
+
+    def _process_products_page(self, items, graphql_context, max_workers):
+        """
+        Expand variants for a page of products and yield ProductCompatibility records.
+        Uses a thread pool when max_workers > 1, otherwise processes sequentially.
+        """
+        if max_workers <= 1:
+            for product in items:
+                expanded = self._expand_product_variants(product, graphql_context)
+                yield ProductCompatibility(expanded)
+        else:
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                futures = {
+                    executor.submit(self._expand_product_variants, p, graphql_context): i
+                    for i, p in enumerate(items)
+                }
+                results = [None] * len(items)
+                for future in as_completed(futures):
+                    idx = futures[future]
+                    results[idx] = future.result()
+                for expanded in results:
+                    yield ProductCompatibility(expanded)
+
+    def _paginate_products_in_window(self, updated_at_min, updated_at_max, graphql_context, max_workers):
+        """
+        Generator that paginates over product pages within a single date window.
+        Yields ProductCompatibility instances for each product (with variants expanded).
+        """
+        cursor = None
+        page_count = 0
+        while True:
+            log_message = f"Fetching products updated between {updated_at_min} and {updated_at_max}, page {page_count}"
+            if cursor:
+                log_message += f" with cursor {cursor}"
+            LOGGER.info(log_message)
+
+            page = self.get_products(updated_at_min, updated_at_max, cursor)
+            items = page["data"]["products"]["nodes"]
+            page_info = page["data"]["products"]["pageInfo"]
+
+            if not items:
+                if page_info["hasNextPage"]:
+                    cursor = page_info["endCursor"]
+                    page_count += 1
+                    continue
+                return
+
+            yield from self._process_products_page(items, graphql_context, max_workers)
+
+            if page_info["hasNextPage"]:
+                cursor = page_info["endCursor"]
+                page_count += 1
+            else:
+                return
+
+    def _expand_product_variants(self, product, graphql_context=None):
+        """Fetch all variant pages for one product; returns product with variants expanded (same format)."""
+        variant_nodes = list(product.get("variants", {}).get("nodes", []))
+        has_next_page = self._has_next_page_variants(product)
+        variants_page_count = 0
+        while has_next_page:
+            variants_cursor = product["variants"]["pageInfo"]["endCursor"]
+            variants_page_count += 1
+            LOGGER.info(
+                "Product %s has additional variants, fetching page %s with cursor %s",
+                product["id"],
+                variants_page_count,
+                variants_cursor,
+            )
+            variants_page = self.get_product_variants(
+                product["id"], variants_cursor, graphql_context=graphql_context
+            )
+            product_data = variants_page.get("data", {}).get("product", {})
+            if product_data is None:
+                break
+            product_variants = product_data.get("variants", {})
+            variant_nodes.extend(product_variants.get("nodes", []))
+            product["variants"] = product_variants
+            has_next_page = self._has_next_page_variants(product)
+        product["variants"] = {"nodes": variant_nodes}
+        return product
+
     def get_objects(self):
         # read_locations is a new requirement as of GraphQL API v2024-07 to fetch the "fulfillment_service" key for a variant.
         # This logic of fetching scopes is used to support existing tenants who may not have been granted the read_locations scope.
@@ -456,22 +729,16 @@ class Products(Stream):
         if not self.has_access_scope('read_locations'):
             LOGGER.warning("The `read_locations` access scope is not granted. The `fulfillment_service` field will not be available for product variants")
 
-        def process_product(product):
-            yield ProductCompatibility(product)
-
         updated_at_min = self.get_bookmark()
         stop_time = singer.utils.now().replace(microsecond=0)
         date_window_size = float(Context.config.get("date_window_size", 1))
+        max_workers = int(Context.config.get("variant_fetch_workers", 8))
 
         while updated_at_min < stop_time:
             updated_at_max = min(updated_at_min + timedelta(days=date_window_size), stop_time)
-
-            yield from self.paginate(
-                fetch_page=self.get_products,
-                updated_at_min=updated_at_min,
-                updated_at_max=updated_at_max,
-                process_item=process_product,
-                item_type="products"
+            graphql_context = self._get_graphql_context()
+            yield from self._paginate_products_in_window(
+                updated_at_min, updated_at_max, graphql_context, max_workers
             )
             updated_at_min = updated_at_max
             self.update_bookmark(strftime(updated_at_min))

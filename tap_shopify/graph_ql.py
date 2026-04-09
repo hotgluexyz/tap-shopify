@@ -29,8 +29,8 @@ class GraphQL:
             response = urllib.request.urlopen(req)
             return response.read().decode("utf-8")
         except urllib.error.HTTPError as e:
-            if e.status >= 500 or e.status in [429]:
-                LOGGER.info("Received %s -- backing off", e.status)
+            if e.code == 429 or e.code >= 500:
+                LOGGER.info("Received %s -- backing off", e.code)
                 raise RetryableAPIError(e)
             raise e from e
         except urllib.error.URLError as e:
@@ -38,4 +38,28 @@ class GraphQL:
         except ConnectionResetError as e:
             raise RetryableAPIError(e)
 
-
+    @staticmethod
+    def execute_with_context(endpoint, headers, query, variables=None, operation_name=None):
+        """
+        Execute a GraphQL request using pre-fetched endpoint and headers.
+        Thread-safe: does not read or modify the global Shopify session.
+        Raises RetryableAPIError for 429, 5xx, URLError, ConnectionResetError.
+        Returns the response body as a string.
+        """
+        default_headers = {"Accept": "application/json", "Content-Type": "application/json"}
+        merged = dict(default_headers)
+        merged.update(headers)
+        data = {"query": query, "variables": variables, "operationName": operation_name}
+        req = urllib.request.Request(endpoint, json.dumps(data).encode("utf-8"), merged)
+        try:
+            response = urllib.request.urlopen(req)
+            return response.read().decode("utf-8")
+        except urllib.error.HTTPError as e:
+            if e.code == 429 or e.code >= 500:
+                LOGGER.info("Received %s -- backing off", e.code)
+                raise RetryableAPIError(e)
+            raise e from e
+        except urllib.error.URLError as e:
+            raise RetryableAPIError(e)
+        except ConnectionResetError as e:
+            raise RetryableAPIError(e)
