@@ -28,6 +28,8 @@ MAX_TIME = 900
 
 # Errnos often seen when the TCP stack cannot complete a connect (e.g. urllib
 # / pyactiveresource) but the problem may be transient (routing blips, VPC).
+# Include ECONNRESET: bare ConnectionResetError is OSError, not
+# requests.exceptions.ConnectionError, so it is filtered only by this set.
 _TRANSIENT_NETWORK_ERRNOS = frozenset(
     (
         errno.ENETUNREACH,  # e.g. Linux 101 "Network is unreachable"
@@ -35,6 +37,7 @@ _TRANSIENT_NETWORK_ERRNOS = frozenset(
         errno.ETIMEDOUT,
         errno.EHOSTUNREACH,
         errno.ECONNREFUSED,
+        errno.ECONNRESET,
         errno.EPIPE,
         errno.ECONNABORTED,
     )
@@ -46,6 +49,7 @@ def giveup_oserror_not_transient_network(exc):
 
     requests.ConnectionError subclasses OSError; those must keep the prior
     behavior (always retry until max_time), not errno-based giveup.
+    Builtin ConnectionResetError is OSError but not requests.ConnectionError.
     """
     if isinstance(exc, ConnectionError):
         return False
