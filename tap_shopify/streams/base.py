@@ -1,4 +1,5 @@
 import datetime
+import errno
 import functools
 import math
 import sys
@@ -24,6 +25,38 @@ DATE_WINDOW_SIZE = 365
 
 # We will retry a 500 error a maximum of 15 minutes before giving up
 MAX_TIME = 900
+
+# Errnos often seen when the TCP stack cannot complete a connect (e.g. urllib
+# / pyactiveresource) but the problem may be transient (routing blips, VPC).
+# Include ECONNRESET: bare ConnectionResetError is OSError, not
+# requests.exceptions.ConnectionError, so it is filtered only by this set.
+_TRANSIENT_NETWORK_ERRNOS = frozenset(
+    (
+        errno.ENETUNREACH,  # e.g. Linux 101 "Network is unreachable"
+        errno.ENETDOWN,
+        errno.ETIMEDOUT,
+        errno.EHOSTUNREACH,
+        errno.ECONNREFUSED,
+        errno.ECONNRESET,
+        errno.EPIPE,
+        errno.ECONNABORTED,
+    )
+)
+
+
+def giveup_oserror_not_transient_network(exc):
+    """Backoff giveup: retry only transient connect-style bare OSErrors.
+
+    requests.ConnectionError subclasses OSError; those must keep the prior
+    behavior (always retry until max_time), not errno-based giveup.
+    Builtin ConnectionResetError is OSError but not requests.ConnectionError.
+    """
+    if isinstance(exc, ConnectionError):
+        return False
+    if isinstance(exc, OSError):
+        return exc.errno not in _TRANSIENT_NETWORK_ERRNOS
+    return False
+
 
 def is_not_status_code_fn(status_code):
     def gen_fn(exc):
@@ -104,7 +137,9 @@ def shopify_error_handling(fnc):
                           (pyactiveresource.formats.Error,
                            simplejson.scanner.JSONDecodeError,
                            ConnectionError,
-                           RetryableAPIError),
+                           RetryableAPIError,
+                           OSError),
+                          giveup=giveup_oserror_not_transient_network,
                           on_backoff=retry_handler,
                           max_time=MAX_TIME)
     @backoff.on_exception(retry_after_wait_gen,
