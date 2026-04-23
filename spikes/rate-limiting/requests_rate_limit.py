@@ -20,7 +20,7 @@ start = datetime.now()
 def request_orders(lim):
     req_url = shop_url + '/orders.json'
     req_params = {"limit": str(lim)}
-    resp = requests.get(req_url,params=req_params)
+    resp = requests.get(req_url,params=req_params, timeout=300)
     if resp.status_code == 429:
         sleep_time_str = resp.headers['Retry-After']
         print("!!!!!!!!!!!!!!!!!!")
