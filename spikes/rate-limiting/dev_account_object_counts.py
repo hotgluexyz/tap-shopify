@@ -27,7 +27,7 @@ shopify_objects = [
 
 def shopify_request(endpoint,req_params={}):
     req_url = '{}/{}'.format(shop_url, endpoint)
-    resp = requests.get(req_url, params=req_params)
+    resp = requests.get(req_url, params=req_params, timeout=300)
     return resp.json()
 
 # Hit count endpoint using requests for each object

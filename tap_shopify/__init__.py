@@ -44,7 +44,8 @@ def initialize_shopify_client():
                 "client_id": client_id,
                 "client_secret": client_secret,
                 "grant_type": "client_credentials"
-            }
+            },
+            timeout=300
         )
 
         if not resp.ok:
@@ -89,7 +90,8 @@ def load_shop_id(shop, api_key):
     response = requests.post(
         graphql_url,
         headers=headers,
-        json={"query": query}
+        json={"query": query},
+        timeout=300
     )
 
     if hasattr(response, 'url'):
