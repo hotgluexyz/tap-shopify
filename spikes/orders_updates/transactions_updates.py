@@ -21,7 +21,7 @@ def shopify_request(endpoint,req_params={}):
 
 def shopify_post(endpoint, content):
     post_url = '{}/{}'.format(shop_url, endpoint)
-    resp = requests.post(post_url, json=content)
+    resp = requests.post(post_url, json=content, timeout=300)
     return resp.json()
 
 
