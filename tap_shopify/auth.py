@@ -18,6 +18,7 @@ import threading
 import time
 import urllib.error
 
+import backoff
 import pyactiveresource.connection
 import requests
 import shopify
@@ -49,9 +50,19 @@ def _needs_refresh():
     return expires_in - time.time() <= REFRESH_SECONDS_BEFORE_EXPIRY
 
 
-def _refresh_access_token():
+class TransientRefreshError(Exception):
+    """Shopify answered the refresh with 429 or 5xx; the same refresh token can be retried."""
+
+
+# The old refresh token stays valid until the new one is used, so retrying is safe even if
+# Shopify processed an attempt whose response never arrived
+@backoff.on_exception(
+    backoff.expo,
+    (TransientRefreshError, requests.exceptions.ConnectionError, requests.exceptions.Timeout),
+    max_tries=5,
+)
+def _request_new_tokens():
     shop = Context.config["shop"].split(".")[0]
-    requested_at = int(time.time())
     response = requests.post(
         f"https://{shop}.myshopify.com/admin/oauth/access_token",
         data={
@@ -62,9 +73,18 @@ def _refresh_access_token():
         },
         timeout=300,
     )
+    if response.status_code == 429 or response.status_code >= 500:
+        raise TransientRefreshError(
+            f"Failed to refresh access token (HTTP {response.status_code}): {response.text}"
+        )
     if not response.ok:
         raise ValueError(f"Failed to refresh access token: {response.text}")
-    token = response.json()
+    return response.json()
+
+
+def _refresh_access_token():
+    requested_at = int(time.time())
+    token = _request_new_tokens()
     new_tokens = {
         "access_token": token["access_token"],
         "refresh_token": token["refresh_token"],
@@ -79,7 +99,8 @@ def _save_tokens_to_config_file(new_tokens):
     """Write the config to a temp file and swap it in, so a failed write can't truncate it."""
     # Only the token keys: Context.config also holds values the tap derives (shop, shop_id)
     with open(Context.config_path) as config_file:
-        saved_config = json.load(config_file)
+        original_config_text = config_file.read()
+    saved_config = json.loads(original_config_text)
     saved_config.update(new_tokens)
     config_dir = os.path.dirname(os.path.abspath(Context.config_path))
     temp_fd, temp_path = tempfile.mkstemp(dir=config_dir, suffix=".tmp")
@@ -89,8 +110,14 @@ def _save_tokens_to_config_file(new_tokens):
         try:
             os.replace(temp_path, Context.config_path)
         except OSError:
-            # A config mounted on its own (single-file Docker bind mount) can't be renamed over
-            shutil.copyfile(temp_path, Context.config_path)
+            # A config mounted on its own (single-file Docker bind mount) can't be renamed over,
+            # so it is rewritten in place, and put back as it was if that write fails
+            try:
+                shutil.copyfile(temp_path, Context.config_path)
+            except OSError:
+                with open(Context.config_path, "w") as config_file:
+                    config_file.write(original_config_text)
+                raise
     finally:
         if os.path.exists(temp_path):
             os.remove(temp_path)
