@@ -10,6 +10,11 @@ import pyactiveresource.formats
 import simplejson
 import singer
 from singer import metrics, utils
+from tap_shopify.auth import (
+    REST_OR_GRAPHQL_HTTP_ERRORS,
+    get_valid_access_token,
+    refresh_access_token_after_401,
+)
 from tap_shopify.context import Context
 from tap_shopify.exceptions import RetryableAPIError
 from requests.exceptions import ConnectionError
@@ -149,6 +154,12 @@ def shopify_error_handling(fnc):
                           on_backoff=leaky_bucket_handler)
     @functools.wraps(fnc)
     def wrapper(*args, **kwargs):
+        get_valid_access_token()
+        try:
+            return fnc(*args, **kwargs)
+        except REST_OR_GRAPHQL_HTTP_ERRORS as exc:
+            if not refresh_access_token_after_401(exc):
+                raise
         return fnc(*args, **kwargs)
     return wrapper
 

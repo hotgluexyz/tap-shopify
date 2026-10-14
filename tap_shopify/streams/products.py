@@ -1,4 +1,5 @@
 import shopify
+from tap_shopify.auth import headers_with_latest_access_token
 from tap_shopify.streams.base import (Stream, shopify_error_handling)
 from tap_shopify.context import Context
 import json
@@ -516,6 +517,7 @@ class Products(Stream):
     @shopify_error_handling
     def _call_graphql_direct(self, endpoint, headers, query, variables, max_throttle_retries=5):
         """Execute GraphQL with pre-fetched (endpoint, headers). Uses GraphQL.execute_with_context + THROTTLED retry."""
+        headers = headers_with_latest_access_token(headers)
         for attempt in range(max_throttle_retries + 1):
             response_str = GraphQL.execute_with_context(endpoint, headers, query, variables)
             result = json.loads(response_str)
