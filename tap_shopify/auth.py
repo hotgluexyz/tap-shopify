@@ -11,6 +11,9 @@ the token, after which it holds the Unix time the token expires.
 https://shopify.dev/docs/apps/build/authentication-authorization/migrate-to-expiring-offline-access-tokens
 """
 import json
+import os
+import shutil
+import tempfile
 import threading
 import time
 import urllib.error
@@ -67,15 +70,30 @@ def _refresh_access_token():
         "refresh_token": token["refresh_token"],
         "expires_in": requested_at + token["expires_in"],
     }
+    _save_tokens_to_config_file(new_tokens)
     Context.config.update(new_tokens)
+    LOGGER.info("Refreshed the Shopify access token.")
 
+
+def _save_tokens_to_config_file(new_tokens):
+    """Write the config to a temp file and swap it in, so a failed write can't truncate it."""
     # Only the token keys: Context.config also holds values the tap derives (shop, shop_id)
     with open(Context.config_path) as config_file:
         saved_config = json.load(config_file)
     saved_config.update(new_tokens)
-    with open(Context.config_path, "w") as config_file:
-        json.dump(saved_config, config_file, indent=2)
-    LOGGER.info("Refreshed the Shopify access token.")
+    config_dir = os.path.dirname(os.path.abspath(Context.config_path))
+    temp_fd, temp_path = tempfile.mkstemp(dir=config_dir, suffix=".tmp")
+    try:
+        with os.fdopen(temp_fd, "w") as temp_file:
+            json.dump(saved_config, temp_file, indent=2)
+        try:
+            os.replace(temp_path, Context.config_path)
+        except OSError:
+            # A config mounted on its own (single-file Docker bind mount) can't be renamed over
+            shutil.copyfile(temp_path, Context.config_path)
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
 
 
 def _use_access_token(token):
@@ -97,15 +115,21 @@ def get_valid_access_token():
     return Context.config["access_token"]
 
 
-def refresh_access_token_after_401(exc):
-    """Refresh the expiring token after a 401; return True if the request should be retried."""
+def refresh_access_token_after_401(exc, rejected_token):
+    """Refresh the expiring token after a 401; return True if the request should be retried.
+
+    When another thread already replaced ``rejected_token``, the request is retried with
+    that newer token instead of refreshing (and rotating the token pair) again.
+    """
     is_401 = isinstance(exc, pyactiveresource.connection.UnauthorizedAccess) or (
         isinstance(exc, urllib.error.HTTPError) and exc.code == 401
     )
     if not (is_401 and uses_expiring_token()):
         return False
     with _one_refresh_at_a_time:
-        _refresh_access_token()
+        already_refreshed_by_another_thread = Context.config["access_token"] != rejected_token
+        if not already_refreshed_by_another_thread:
+            _refresh_access_token()
     _use_access_token(Context.config["access_token"])
     return True
 

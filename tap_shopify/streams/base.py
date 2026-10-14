@@ -154,11 +154,11 @@ def shopify_error_handling(fnc):
                           on_backoff=leaky_bucket_handler)
     @functools.wraps(fnc)
     def wrapper(*args, **kwargs):
-        get_valid_access_token()
+        expiring_token_sent = get_valid_access_token()
         try:
             return fnc(*args, **kwargs)
         except REST_OR_GRAPHQL_HTTP_ERRORS as exc:
-            if not refresh_access_token_after_401(exc):
+            if not refresh_access_token_after_401(exc, expiring_token_sent):
                 raise
         return fnc(*args, **kwargs)
     return wrapper
