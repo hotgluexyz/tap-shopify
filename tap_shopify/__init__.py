@@ -14,6 +14,7 @@ import singer
 from singer import utils
 from singer import metadata
 from singer import Transformer
+from tap_shopify.auth import get_valid_access_token, uses_expiring_token
 from tap_shopify.context import Context
 from tap_shopify.exceptions import ShopifyError
 from tap_shopify.streams.base import shopify_error_handling
@@ -34,7 +35,9 @@ def initialize_shopify_client():
         Context.config['shop'] = Context.config['shop'].split('.')[0]
     shop = Context.config['shop']
 
-    if Context.config.get('access_token') is None and Context.config.get('client_id') and Context.config.get('client_secret'):
+    if uses_expiring_token():
+        api_key = get_valid_access_token()
+    elif Context.config.get('access_token') is None and Context.config.get('client_id') and Context.config.get('client_secret'):
         client_id = Context.config.get('client_id')
         client_secret = Context.config.get('client_secret')
 
@@ -271,6 +274,7 @@ def main():
         args = utils.parse_args(REQUIRED_CONFIG_KEYS)
 
         Context.config = args.config
+        Context.config_path = args.config_path
         Context.state = args.state
 
         # If discover flag was passed, run discovery mode and dump output to stdout

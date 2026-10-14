@@ -10,6 +10,7 @@ class Args():
         self.discover = True
         self.catalog = False
         self.config = {'api_key': 'test', 'shop': 'shop'}
+        self.config_path = 'config.json'
         self.state = False
 
 def resource_not_found_raiser():
