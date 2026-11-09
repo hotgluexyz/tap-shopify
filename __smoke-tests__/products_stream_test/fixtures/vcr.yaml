@@ -117,8 +117,6 @@ interactions:
       - '209'
       Content-Type:
       - application/json
-      Host:
-      - hotglue-testing-1.myshopify.com
       User-Agent:
       - ShopifyPythonAPI/12.7.0 Python/3.10.16
     method: POST
@@ -255,8 +253,6 @@ interactions:
     headers:
       Connection:
       - close
-      Host:
-      - hotglue-testing-1.myshopify.com
       User-Agent:
       - ShopifyPythonAPI/12.7.0 Python/3.10.16
     method: GET
@@ -402,8 +398,6 @@ interactions:
       - '3463'
       Content-Type:
       - application/json
-      Host:
-      - hotglue-testing-1.myshopify.com
       User-Agent:
       - ShopifyPythonAPI/12.7.0 Python/3.10.16
     method: POST
@@ -822,8 +816,6 @@ interactions:
       - '3463'
       Content-Type:
       - application/json
-      Host:
-      - hotglue-testing-1.myshopify.com
       User-Agent:
       - ShopifyPythonAPI/12.7.0 Python/3.10.16
     method: POST
@@ -1018,8 +1010,6 @@ interactions:
       - '3463'
       Content-Type:
       - application/json
-      Host:
-      - hotglue-testing-1.myshopify.com
       User-Agent:
       - ShopifyPythonAPI/12.7.0 Python/3.10.16
     method: POST
@@ -1487,8 +1477,6 @@ interactions:
       - '3533'
       Content-Type:
       - application/json
-      Host:
-      - hotglue-testing-1.myshopify.com
       User-Agent:
       - ShopifyPythonAPI/12.7.0 Python/3.10.16
     method: POST
@@ -2050,8 +2038,6 @@ interactions:
       - '3533'
       Content-Type:
       - application/json
-      Host:
-      - hotglue-testing-1.myshopify.com
       User-Agent:
       - ShopifyPythonAPI/12.7.0 Python/3.10.16
     method: POST
@@ -2403,8 +2389,6 @@ interactions:
       - '3463'
       Content-Type:
       - application/json
-      Host:
-      - hotglue-testing-1.myshopify.com
       User-Agent:
       - ShopifyPythonAPI/12.7.0 Python/3.10.16
     method: POST

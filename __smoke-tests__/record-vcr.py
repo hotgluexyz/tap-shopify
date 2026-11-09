@@ -6,7 +6,7 @@ from hotglue_smoke_test.vcr.sanitize import redact_credential, scrub_response_bo
 
 
 class ShopifyTestRunner(VCRTapTestRunner):
-    FILTER_HEADERS = [*VCRTapTestRunner.FILTER_HEADERS, "X-Shopify-Access-Token"]
+    FILTER_HEADERS = [*VCRTapTestRunner.FILTER_HEADERS, "X-Shopify-Access-Token", "Host"]
     TOKEN_KEYS = [*VCRTapTestRunner.TOKEN_KEYS, "shop"]
     PRESERVE_KEYS = {"id", "updatedAt", "createdAt", "cursor", "endCursor", "hasNextPage"}
 
@@ -19,6 +19,7 @@ class ShopifyTestRunner(VCRTapTestRunner):
         shopify_main()
 
     def scrub_uri(self, uri: str) -> str:
+        """Replace the configured Shopify host in recorded request URIs."""
         config_path = Path(self.test_case_path) / "config.json"
         shop = json.loads(config_path.read_text()).get("shop")
         if not shop:
@@ -27,6 +28,7 @@ class ShopifyTestRunner(VCRTapTestRunner):
         return uri.replace(f"https://{shop.split('.')[0]}.myshopify.com", f"https://{scrubbed_shop}.myshopify.com")
 
     def scrub_response_body(self, body, faker, cache):
+        """Scrub response values without treating Shopify's `shop` object as a credential."""
         # `shop` is a credential in config.json, but a response object whose fields must be scrubbed.
         return scrub_response_body(
             body,
