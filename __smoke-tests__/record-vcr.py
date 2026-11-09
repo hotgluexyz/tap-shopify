@@ -28,15 +28,23 @@ class ShopifyTestRunner(VCRTapTestRunner):
         return uri.replace(f"https://{shop.split('.')[0]}.myshopify.com", f"https://{scrubbed_shop}.myshopify.com")
 
     def scrub_response_body(self, body, faker, cache):
-        """Scrub response values without treating Shopify's `shop` object as a credential."""
+        """Scrub response values while preserving access-scope handles the tap consumes."""
         # `shop` is a credential in config.json, but a response object whose fields must be scrubbed.
-        return scrub_response_body(
-            body,
-            set(self.PRESERVE_KEYS),
-            faker,
-            cache,
-            set(self.TOKEN_KEYS) - {"shop"},
+        response = json.loads(
+            scrub_response_body(
+                body,
+                set(self.PRESERVE_KEYS),
+                faker,
+                cache,
+                set(self.TOKEN_KEYS) - {"shop"},
+            )
         )
+        original = json.loads(body)
+        original_scopes = original.get("data", {}).get("appInstallation", {}).get("accessScopes", [])
+        scrubbed_scopes = response.get("data", {}).get("appInstallation", {}).get("accessScopes", [])
+        for original_scope, scrubbed_scope in zip(original_scopes, scrubbed_scopes):
+            scrubbed_scope["handle"] = original_scope["handle"]
+        return json.dumps(response)
 
 
 if __name__ == "__main__":
