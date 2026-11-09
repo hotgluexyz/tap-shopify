@@ -104,6 +104,9 @@ rsa-key
 tags
 singer-check-tap-data
 state.json
+!__smoke-tests__/**/config.json
 .venv*
 .history
 .vscode
+__smoke-tests__/**/test_runtime/
+__smoke-tests__/unsanitized_*_test/

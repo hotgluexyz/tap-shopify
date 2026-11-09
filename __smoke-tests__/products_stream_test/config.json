@@ -1,0 +1,8 @@
+{
+    "start_date": "2022-01-02T00:00:00.000Z",
+    "date_window_size": 365,
+    "api_key": "API***",
+    "shop": "hot***",
+    "api_version": "2024-01",
+    "graphql_api_version": "2024-07"
+}
