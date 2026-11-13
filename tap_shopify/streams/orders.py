@@ -6,7 +6,7 @@ import singer
 from singer import metrics, utils
 
 from tap_shopify.context import Context
-from tap_shopify.streams.base import DATE_WINDOW_SIZE, Stream
+from tap_shopify.streams.base import DATE_WINDOW_SIZE, Stream, shopify_error_handling
 
 
 class Orders(Stream):
@@ -19,6 +19,10 @@ class Orders(Stream):
             self.replication_key = "created_at"
         else:
             self.replication_key = "updated_at"
+
+    @shopify_error_handling
+    def get_next_page(self, page):
+        return page.next_page(no_cache=True)
 
     def get_objects(self):
         # Parent reuse (refund_orders / transaction_orders) keeps base since_id path.
