@@ -21,6 +21,11 @@ class Orders(Stream):
             self.replication_key = "updated_at"
 
     def get_objects(self):
+        # Parent reuse (refund_orders / transaction_orders) keeps base since_id path.
+        if self.name != "orders":
+            yield from super().get_objects()
+            return
+
         updated_at_min = self.get_bookmark()
         stop_time = singer.utils.now().replace(microsecond=0)
         date_window_size = float(Context.config.get("date_window_size", DATE_WINDOW_SIZE))
@@ -63,8 +68,6 @@ class Orders(Stream):
                     # Get the next page
                     page = self.get_next_page(page)
                 
-                #dont we need to put the next page on the bookmark?
-
             self.update_bookmark(utils.strftime(updated_at_max))
             updated_at_min = updated_at_max
 
