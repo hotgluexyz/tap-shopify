@@ -25,7 +25,15 @@ class Orders(Stream):
         return page.next_page(no_cache=True)
 
     def get_objects(self):
-        # Parent reuse (refund_orders / transaction_orders) keeps base since_id path.
+        """
+        Use Link-header pagination for Orders instead of since_id.
+
+        Orders were returned with IDs out of order, causing the ID-order checks
+        in the since_id pagination to fail. It now follow Shopify's next-page
+        link, so pagination no longer depends on the order of the IDs.
+        
+        Other streams that reuse the Orders class keep using since_id.
+        """
         if self.name != "orders":
             yield from super().get_objects()
             return
