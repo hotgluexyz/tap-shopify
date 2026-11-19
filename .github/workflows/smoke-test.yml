@@ -27,7 +27,7 @@ jobs:
         run: |
           uv venv .venv
           source .venv/bin/activate
-          uv pip install "numpy<2" . hotglue-smoke-test
+          uv pip install "numpy<2" . "hotglue-smoke-test>=1.1.10"
 
       - name: Run smoke tests
         run: |
